@@ -1,17 +1,17 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import org.junit.jupiter.api.Test
-import org.unividuell.countdown.core.game.internal.DifferentFromPreviousRound
+import org.unividuell.countdown.core.game.internal.NotRecentlyPlayed
 import org.unividuell.countdown.core.game.internal.PastRound
 import org.unividuell.countdown.core.rng.SeededRandom
 
 class GameSelectionTest {
 
-    private val selection = DifferentFromPreviousRound()
+    private val selection = NotRecentlyPlayed()
 
     private fun random() = SeededRandom.fromSeed(4711)
 
@@ -57,19 +57,40 @@ class GameSelectionTest {
     }
 
     @Test
-    fun `only the round immediately before counts, not the whole history`() {
-        // "beta" was two rounds ago and is fair game again; only "alpha" is excluded.
+    fun `with five candidates only the round immediately before blocks`() {
+        // "beta" was two rounds ago: five candidates block one round, so it is fair game again.
         val history = listOf(
             PastRound(roundNumber = 9, gameType = "alpha"),
             PastRound(roundNumber = 10, gameType = "beta"),
         )
 
-        val picked = selection.pick(
-            candidates = listOf("alpha", "beta"), history = history, random = random(),
+        val seen = (0 until 50).mapNotNull {
+            selection.pick(
+                candidates = listOf("alpha", "beta", "gamma", "delta", "epsilon"),
+                history = history,
+                random = SeededRandom.fromSeed(it),
+            )
+        }.toSet()
+
+        seen shouldBe setOf("beta", "gamma", "delta", "epsilon")
+    }
+
+    @Test
+    fun `with six candidates the last two rounds block`() {
+        val history = listOf(
+            PastRound(roundNumber = 9, gameType = "alpha"),
+            PastRound(roundNumber = 10, gameType = "beta"),
         )
 
-        picked shouldBe "beta"
-        picked shouldNotBe "alpha"
+        val seen = (0 until 50).mapNotNull {
+            selection.pick(
+                candidates = listOf("alpha", "beta", "gamma", "delta", "epsilon", "zeta"),
+                history = history,
+                random = SeededRandom.fromSeed(it),
+            )
+        }.toSet()
+
+        seen shouldBe setOf("gamma", "delta", "epsilon", "zeta")
     }
 
     @Test
@@ -93,5 +114,65 @@ class GameSelectionTest {
         }.toSet()
 
         seen shouldBe candidates.toSet()
+    }
+
+    private val fourteen = (1..14).map { "g%02d".format(it) }
+
+    /** [types] most recent first, as `historyOf` returns them. */
+    private fun historyOf(vararg types: String) =
+        types.mapIndexed { i, type -> PastRound(roundNumber = 100 - i, gameType = type) }
+
+    private fun picksOver(seeds: Int, history: List<PastRound>) = (0 until seeds).mapNotNull {
+        selection.pick(candidates = fourteen, history = history, random = SeededRandom.fromSeed(it))
+    }.toSet()
+
+    @Test
+    fun `with fourteen candidates the last ten rounds are blocked`() {
+        val history = historyOf(*fourteen.take(10).toTypedArray())
+
+        picksOver(seeds = 50, history = history) shouldBe fourteen.drop(10).toSet()
+    }
+
+    @Test
+    fun `the eleventh round back is free again`() {
+        // g01 was played eleven rounds ago, outside the block of ten.
+        val history = historyOf(*fourteen.drop(1).take(10).toTypedArray(), "g01")
+
+        picksOver(seeds = 50, history = history) shouldContain "g01"
+    }
+
+    @Test
+    fun `a short history blocks only what it holds`() {
+        val history = historyOf("g01", "g02")
+
+        picksOver(seeds = 200, history = history) shouldBe (fourteen - setOf("g01", "g02")).toSet()
+    }
+
+    @Test
+    fun `a type no longer available still takes a block slot without failing`() {
+        // "gone" is not a candidate; the block of ten then covers only nine candidates.
+        val history = historyOf("gone", *fourteen.take(9).toTypedArray())
+
+        picksOver(seeds = 200, history = history) shouldBe fourteen.drop(9).toSet()
+    }
+
+    @Test
+    fun `over editions of 140 rounds every game comes up 8 to 12 times`() {
+        // One seed proves nothing: uniform choice stays inside 8-12 for 1 seed in 1000 (4711 is
+        // one). Over 100 seeds this rule stays inside for about 95, uniform choice for none.
+        val inside = (0 until 100).count { seed ->
+            val random = SeededRandom.fromSeed(seed)
+            val history = ArrayDeque<PastRound>()
+
+            repeat(140) { round ->
+                val picked = requireNotNull(selection.pick(candidates = fourteen, history = history, random = random))
+                history.addFirst(PastRound(roundNumber = round, gameType = picked))
+            }
+
+            val counts = history.groupingBy { it.gameType }.eachCount()
+            counts.keys == fourteen.toSet() && counts.values.all { it in 8..12 }
+        }
+
+        inside shouldBeGreaterThanOrEqual 90
     }
 }

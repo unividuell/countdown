@@ -27,11 +27,11 @@ import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.countdown.internal.CountdownService
 import org.unividuell.countdown.core.game.internal.AnnouncementService
-import org.unividuell.countdown.core.game.internal.DifferentFromPreviousRound
 import org.unividuell.countdown.core.game.internal.GameSelection
 import org.unividuell.countdown.core.game.internal.HistoryService
 import org.unividuell.countdown.core.game.internal.MaterialisationSchedule
 import org.unividuell.countdown.core.game.internal.NoGameReason
+import org.unividuell.countdown.core.game.internal.NotRecentlyPlayed
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.ResolvedRound
 import org.unividuell.countdown.core.game.internal.RoundGame
@@ -152,7 +152,7 @@ class RoundTimelineOracleTest(
         @Bean
         @Primary
         fun oracleSelection() = GameSelection { candidates, history, random ->
-            DifferentFromPreviousRound().pick(
+            NotRecentlyPlayed().pick(
                 candidates = candidates.filter { it in ORACLE_IDS },
                 history = history,
                 random = random,
