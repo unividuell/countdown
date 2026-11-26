@@ -184,8 +184,8 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         /** Each floor's bar slides this many percent of floor 0's speed faster. Provisional. */
         const val ACCEL_PERCENT = 3
 
-        /** A stop this many units off still lands perfectly: ±9 ms at the start speed. Provisional. */
-        const val PERFECT_TOLERANCE = 3
+        /** A stop this many units off still lands perfectly: ±12 ms at the start speed. Provisional. */
+        const val PERFECT_TOLERANCE = 4
         const val PAUSE_MS = 300
         const val MAX_FLOORS = 999
         const val MIN_TARGET = 26

@@ -13,7 +13,7 @@ import { useSoundStage } from '@/ui/useSoundAwake'
 import { browserClock } from '@/games/runClock'
 import StackFloorBriefing from './StackFloorBriefing.vue'
 import TowerView from './TowerView.vue'
-import { playPerfect, playStop } from './stopSound'
+import { playMiss, playPerfect, playStop } from './stopSound'
 import { foundation } from './tower'
 import { geometryOf } from './types'
 import type { StackFloorGuess, StackFloorPayload, StackFloorScene } from './types'
@@ -152,6 +152,7 @@ function onPointerDown(event: PointerEvent): void {
   if (result === 'ignored' || inBackground()) return
 
   if (result === 'perfect') playPerfect(current.streak.value)
+  else if (result === 'missed') playMiss()
   else playStop()
 }
 </script>

@@ -6,6 +6,12 @@ import { prefersReducedMotion } from '@/ui/motion'
 
 vi.mock('@/ui/motion', () => ({ prefersReducedMotion: vi.fn(() => false) }))
 
+const scheme = vi.hoisted(() => ({ dark: false }))
+vi.mock('@/ui/colorScheme', async () => {
+  const { computed } = await import('vue')
+  return { useDarkScheme: () => computed(() => scheme.dark) }
+})
+
 enableAutoUnmount(afterEach)
 
 const BARS = [
@@ -177,6 +183,23 @@ describe('TowerView', () => {
     const sparkles = w.findAll('[data-test="perfect"] .stack-sparkle')
 
     expect(sparkles).toHaveLength(2)
+  })
+
+  it('the sparkle is deep gold on the light board, bright on the dark one', () => {
+    scheme.dark = false
+    expect(
+      mountTower({ perfects: [1] })
+        .get('.stack-sparkle')
+        .attributes('fill'),
+    ).toBe('#A87A0E')
+
+    scheme.dark = true
+    expect(
+      mountTower({ perfects: [1] })
+        .get('.stack-sparkle')
+        .attributes('fill'),
+    ).toBe('#FFFBE6')
+    scheme.dark = false
   })
 
   it('a short tower does not scroll', () => {

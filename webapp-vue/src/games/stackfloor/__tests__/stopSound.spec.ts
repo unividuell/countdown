@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { STOP_HZ, perfectHz, playPerfect, playStop } from '../stopSound'
+import { MISS_HZ, STOP_HZ, perfectHz, playMiss, playPerfect, playStop } from '../stopSound'
 import { bodies, graph, resetGraph, sound, started } from '@/ui/__tests__/fakeGraph'
 
 vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
@@ -41,6 +41,13 @@ describe('playStop', () => {
 
   it('a stop that cut something knocks an octave under the perfect notes', () => {
     expect(STOP_HZ).toBe(440)
+  })
+
+  it('the miss knocks another octave down', () => {
+    playMiss()
+
+    expect(bodies().map(({ hz }) => hz)).toEqual([MISS_HZ])
+    expect(MISS_HZ).toBe(STOP_HZ / 2)
   })
 
   it('a perfect stop stays silent while muted', () => {

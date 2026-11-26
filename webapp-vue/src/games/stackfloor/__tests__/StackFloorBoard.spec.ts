@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import StackFloorBoard from '../StackFloorBoard.vue'
 import RevealCover from '@/ui/RevealCover.vue'
-import { playPerfect, playStop } from '../stopSound'
+import { playMiss, playPerfect, playStop } from '../stopSound'
 import type { StackFloorPayload } from '../types'
 import { inBackground } from '@/ui/motion'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
-vi.mock('../stopSound', () => ({ playStop: vi.fn(), playPerfect: vi.fn() }))
+vi.mock('../stopSound', () => ({ playStop: vi.fn(), playPerfect: vi.fn(), playMiss: vi.fn() }))
 vi.mock('@/ui/motion', () => ({
   prefersReducedMotion: vi.fn(() => false),
   inBackground: vi.fn(() => false),
@@ -78,6 +78,7 @@ describe('StackFloorBoard', () => {
     })
     vi.mocked(playStop).mockClear()
     vi.mocked(playPerfect).mockClear()
+    vi.mocked(playMiss).mockClear()
   })
   afterEach(() => vi.useRealTimers())
 
@@ -145,6 +146,15 @@ describe('StackFloorBoard', () => {
 
     expect(w.emitted('guess')).toHaveLength(1)
     expect(w.emitted('guess')![0]).toEqual([{ clicks: [0, 0, 0], restarted: false }])
+  })
+
+  it('the miss knocks lower than a cut', async () => {
+    const w = mountBoard()
+    await runStarted(w)
+    await missInThree(w)
+
+    expect(playStop).toHaveBeenCalledTimes(2)
+    expect(playMiss).toHaveBeenCalledTimes(1)
   })
 
   it('mounted with a payload and no guess, never sealed: own cover with the reload note, then restarted', async () => {

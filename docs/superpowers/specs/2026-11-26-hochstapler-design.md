@@ -56,7 +56,7 @@ Ein Geschicklichkeitsspiel, das sich in Sekunden erklärt.
   für den Reiz.
 - Keine Zeitwertung, auch nicht als Gleichstand-Brecher.
 - Kein Perfekt-Bonus in Punkten. Ein perfekter Halt — höchstens `perfectTolerance` Einheiten daneben
-  (vorläufig 3), dann rastet er ein — bekommt nur Ton und Funken.
+  (vorläufig 4), dann rastet er ein — bekommt nur Ton und Funken.
 - Keine Anzeige von N als Zahl.
 
 ## Ansätze
@@ -158,12 +158,13 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 
 - Kartenbreit, mobil zuerst, Querformat 5:4. Der Turm wandert nach unten weg, damit der gleitende
   Balken sichtbar bleibt. Die Seite bleibt im Lauf scrollbar; nur ein Wisch auf dem Brett ist ein Tipp.
-- **Balken sind plastisch:** oben eine Lichtkante, unten Schatten, leicht gerundete Ecken.
+- **Balken sind plastisch:** oben eine Lichtkante, unten Schatten, kaum gerundete Ecken.
 - **Jeder Balken hat eine leicht andere Farbe:** Farbton um einen festen Schritt weiter, wie auf dem
   Farbkreis. Startton aus der Payload, Schrittweite und Sättigung im Labor, hell und dunkel lesbar.
 - **Der N. Balken sieht anders aus** — das Signal „Ziel erreicht“, nur in Phase eins. Man sieht ihn erst,
   wenn er gleitet; N steht nirgends als Zahl. **Gold, mit Funken, glimmend** — nicht vom Farbkreis.
-- **Halten:** tiefer Klopfton, wenn etwas abgeschnitten wird. Ein perfekter Halt klingt hell und
+- **Halten:** tiefer Klopfton, wenn etwas abgeschnitten wird; der Fehlgriff, der den Lauf beendet, noch
+  eine Oktave tiefer und nachklingend. Ein perfekter Halt klingt hell und
   sprüht kurz Funken an den unteren Ecken des Balkens; jeder weitere in Folge steigt eine Stufe der
   Dur-Tonleiter, bis zur Oktave. **Schnitt:** das Stück fällt animiert nach unten
   ([frontend-ui.md](../../../.claude/guidelines/frontend-ui.md), Animation; reduzierte Bewegung

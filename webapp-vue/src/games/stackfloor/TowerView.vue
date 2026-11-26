@@ -19,9 +19,12 @@ import { barFill, barHue } from './colors'
 import { heightLabel } from './scoreboard'
 
 const BAR_HEIGHT = 60
-const CORNER = 6
+const CORNER = 2
 const GOLD_FROM = '#F7D774'
 const GOLD_TO = '#C9971C'
+/** A perfect stop's flare: bright on the dark board, deep gold on the light one. */
+const FLARE_DARK = '#FFFBE6'
+const FLARE_LIGHT = '#A87A0E'
 
 /** Four-pointed stars at fixed spots on the bar, as fractions of its width and height. */
 const SPARKLES = [
@@ -251,7 +254,7 @@ function star(cx: number, cy: number, r: number): string {
               class="stack-sparkle"
               pointer-events="none"
               :d="star(cx, floorY(floor) + BAR_HEIGHT, 16)"
-              fill="#FFFBE6"
+              :fill="dark ? FLARE_DARK : FLARE_LIGHT"
             />
           </template>
         </g>

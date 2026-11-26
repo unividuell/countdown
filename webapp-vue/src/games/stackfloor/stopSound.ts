@@ -1,7 +1,8 @@
 /**
- * A wooden knock per stop that cut something, low: confirmation, not a count. A perfect stop —
- * nothing cut off — rings two notes up instead, and each perfect stop in a row climbs the major
- * scale one step, up to an octave.
+ * A wooden knock per stop that cut something, low: confirmation, not a count. The stop that touches
+ * nothing knocks lower still and rings out — the run is over. A perfect stop — nothing cut off —
+ * rings two notes up instead, and each perfect stop in a row climbs the major scale one step, up to
+ * an octave.
  */
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { soundGraph } from '@/ui/soundOutput'
@@ -10,12 +11,23 @@ import { knocks } from '@/ui/woodKnock'
 /** A4: an octave under the perfect notes, darker. */
 export const STOP_HZ = 440
 
-/** The sliding bar was stopped and lost a piece, or missed. */
+/** The sliding bar was stopped and lost a piece. */
 export function playStop(): void {
   const graph = soundGraph()
   if (!graph) return
 
   knocks(graph).knock(graph.currentTime + START_LOOKAHEAD_SECONDS, STOP_HZ)
+}
+
+/** A3: another octave down. */
+export const MISS_HZ = 220
+
+/** The bar touched nothing: the run ends. */
+export function playMiss(): void {
+  const graph = soundGraph()
+  if (!graph) return
+
+  knocks(graph).knock(graph.currentTime + START_LOOKAHEAD_SECONDS, MISS_HZ, true)
 }
 
 /** E6, and a fourth above it. */
