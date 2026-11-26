@@ -26,13 +26,9 @@ const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
 
-// What the server holds, and the form's copy of it; only what differs is sent.
 const games = ref<GameEntry[]>([])
-const savedWeights = ref<Record<string, GameWeight>>({})
 const weights = ref<Record<string, GameWeight>>({})
-const weightsChanged = computed(() =>
-  games.value.some((g) => weights.value[g.id] !== savedWeights.value[g.id]),
-)
+const weightsError = ref<string | null>(null)
 
 const edition = computed(() => community.value.edition)
 const start = computed(() => {
@@ -90,32 +86,29 @@ onMounted(async () => {
 onMounted(async () => {
   const list = await listGames(slug)
   games.value = list
-  savedWeights.value = Object.fromEntries(list.map((g) => [g.id, g.weight]))
-  weights.value = { ...savedWeights.value }
+  weights.value = Object.fromEntries(list.map((g) => [g.id, g.weight]))
 })
 
 async function save(): Promise<void> {
   error.value = null
-  if (games.value.length && games.value.every((g) => weights.value[g.id] === 'OFF')) {
-    error.value = 'Mindestens ein Spiel muss an bleiben.'
+  try {
+    await updateCommunity(slug, name.value.trim())
+    await refresh()
+  } catch (e) {
+    error.value = saveErrorMessage(e)
+  }
+}
+async function saveWeights(): Promise<void> {
+  weightsError.value = null
+  if (games.value.every((g) => weights.value[g.id] === 'OFF')) {
+    weightsError.value = 'Mindestens ein Spiel muss an bleiben.'
     return
   }
 
-  // Name first: on a failed weights save the renamed community is already stored and shown, so the
-  // message says which of the two did not make it.
-  let step = 'Name'
   try {
-    if (name.value.trim() !== community.value.name) {
-      await updateCommunity(slug, name.value.trim())
-      await refresh()
-    }
-    step = 'Spiele'
-    if (weightsChanged.value) {
-      await saveGameWeights(slug, weights.value)
-      savedWeights.value = { ...weights.value }
-    }
+    await saveGameWeights(slug, weights.value)
   } catch (e) {
-    error.value = `${step} nicht gespeichert. ${saveErrorMessage(e)}`
+    weightsError.value = saveErrorMessage(e)
   }
 }
 async function regenerate(): Promise<void> {
@@ -142,18 +135,23 @@ async function revoke(): Promise<void> {
       <p class="text-xs text-on-surface-variant">
         URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
       </p>
-      <div v-if="games.length" data-test="game-weights" class="pt-3">
-        <h2 class="mb-2 font-medium">Spiele</h2>
-        <GameWeights v-model="weights" :games="games" />
-        <p class="mt-2 text-xs text-on-surface-variant">
-          Gilt ab der nächsten angekündigten Runde.
-        </p>
-      </div>
       <button class="rounded border px-3 py-1.5 hover:bg-surface-container-highest">
         Speichern
       </button>
       <p v-if="error" class="text-sm text-error">{{ error }}</p>
     </form>
+
+    <div v-if="games.length" class="mt-6 border-t pt-4">
+      <h2 class="mb-2 font-medium">Spiele</h2>
+      <form data-test="game-weights" class="space-y-3" @submit.prevent="saveWeights">
+        <GameWeights v-model="weights" :games="games" />
+        <p class="text-xs text-on-surface-variant">Gilt ab der nächsten angekündigten Runde.</p>
+        <button class="rounded border px-3 py-1.5 hover:bg-surface-container-highest">
+          Speichern
+        </button>
+        <p v-if="weightsError" class="text-sm text-error">{{ weightsError }}</p>
+      </form>
+    </div>
 
     <div class="mt-6 border-t pt-4">
       <h2 class="mb-2 font-medium">Edition</h2>

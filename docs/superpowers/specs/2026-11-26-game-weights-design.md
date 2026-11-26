@@ -102,7 +102,8 @@ Einstellungen, Community-Abschnitt (heute: Name + Slug-Hinweis + Speichern):
 ```
 Name  [ Hüttenwochenende        ]
 URL-Slug /c/huette ist unveränderlich.
-
+[ Speichern ]
+────────────────────────────────────
 Spiele
 Anspielung
 [  aus  ][ selten ][ normal ][ häufig ]
@@ -113,8 +114,8 @@ Augenmaß
 ```
 
 - Vier **gleich breite** Knöpfe je Spiel (Grid, 4 Spalten), technisch eine Radiogruppe je Spiel.
-- Ein Speichern-Knopf für den ganzen Abschnitt; er sendet nur, was sich geändert hat (Name per
-  `PATCH /api/communities/{slug}`, Gewichte per `PUT …/games/weights`).
+- Eigener Abschnitt „Spiele“ mit eigenem Speichern-Knopf (`PUT …/games/weights`); der Name behält
+  seinen Knopf direkt darunter (Entscheidung des Nutzers: ein gemeinsamer Knopf lag zu weit weg).
 - Hinweis unter der Liste: „Gilt ab der nächsten angekündigten Runde.“
 - Alle auf `aus`: Speichern verweigert mit Meldung (Server prüft auch).
 
@@ -130,8 +131,8 @@ Augenmaß
   dort Plätze wie ein nicht mehr verfügbares (PR #200), zählt aber nicht zu `n`.
 - **PUT** ersetzt alle Zeilen der Community in einer Transaktion (löschen + einfügen); idempotent.
   `created_at`/`updated_at` nach `persistence.md`.
-- **Speichern** sendet PATCH (Name) vor PUT (Gewichte), jeweils nur bei Änderung. Schlägt einer fehl,
-  bleibt der Formularstand stehen, die Meldung nennt, was nicht gespeichert wurde.
+- **Speichern** je Abschnitt: Name per PATCH, Spiele per PUT. Schlägt das fehl, bleibt der
+  Formularstand stehen, die Meldung steht im jeweiligen Abschnitt.
 
 ## Dem Bauenden überlassen
 

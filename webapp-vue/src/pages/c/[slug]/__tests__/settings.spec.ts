@@ -89,7 +89,6 @@ describe('settings — name', () => {
       new ApiError(400, 'Bad Request', { detail: 'Name vergeben.' }),
     )
     const w = await mountSettings()
-    await w.find('input').setValue('Team Nord')
     await w.find('form').trigger('submit')
     await flushPromises()
 
@@ -181,22 +180,24 @@ describe('settings — games', () => {
     vi.spyOn(api, 'updateCommunity').mockResolvedValue({} as CommunityResponse)
   })
 
+  const weightsForm = (w: Awaited<ReturnType<typeof mountSettings>>) =>
+    w.get('form[data-test=game-weights]')
+
   it('shows every game with its stored stage', async () => {
     const w = await mountSettings()
 
     expect(w.text()).toContain('Peilung')
     expect(
-      w
-        .get('[data-test=game-weights]')
+      weightsForm(w)
         .findAll<HTMLInputElement>('input:checked')
         .map((i) => i.element.value),
     ).toEqual(['OFTEN', 'NORMAL'])
   })
 
-  it('saves only the weights when only they changed', async () => {
+  it('has its own save button, apart from the name', async () => {
     const w = await mountSettings()
     await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
-    await w.find('form').trigger('submit')
+    await weightsForm(w).trigger('submit')
     await flushPromises()
 
     expect(gamesApi.saveGameWeights).toHaveBeenCalledWith('team', {
@@ -206,8 +207,9 @@ describe('settings — games', () => {
     expect(api.updateCommunity).not.toHaveBeenCalled()
   })
 
-  it('saves only the name when only it changed', async () => {
+  it('saving the name leaves the weights alone', async () => {
     const w = await mountSettings()
+    await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
     await w.find('input').setValue('Team Nord')
     await w.find('form').trigger('submit')
     await flushPromises()
@@ -220,38 +222,23 @@ describe('settings — games', () => {
     const w = await mountSettings()
     await w.find('input[name=weight-echo-locate][value=OFF]').setValue(true)
     await w.find('input[name=weight-song-snippet][value=OFF]').setValue(true)
-    await w.find('form').trigger('submit')
+    await weightsForm(w).trigger('submit')
     await flushPromises()
 
-    expect(w.text()).toContain('Mindestens ein Spiel muss an bleiben.')
+    expect(weightsForm(w).text()).toContain('Mindestens ein Spiel muss an bleiben.')
     expect(gamesApi.saveGameWeights).not.toHaveBeenCalled()
   })
 
-  it('says the games were not saved when only they failed', async () => {
-    vi.spyOn(gamesApi, 'saveGameWeights').mockRejectedValue(
-      new ApiError(400, 'Bad Request', { detail: 'unknown games' }),
-    )
-    const w = await mountSettings()
-    await w.find('input').setValue('Team Nord')
-    await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
-    await w.find('form').trigger('submit')
-    await flushPromises()
-
-    expect(api.updateCommunity).toHaveBeenCalledWith('team', 'Team Nord')
-    expect(w.text()).toContain('Spiele nicht gespeichert')
-    expect(w.text()).not.toContain('Name nicht gespeichert')
-  })
-
-  it('keeps the selection when saving the weights fails', async () => {
+  it('shows a failed save in its own form and keeps the selection', async () => {
     vi.spyOn(gamesApi, 'saveGameWeights').mockRejectedValue(
       new ApiError(400, 'Bad Request', { detail: 'unknown games' }),
     )
     const w = await mountSettings()
     await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
-    await w.find('form').trigger('submit')
+    await weightsForm(w).trigger('submit')
     await flushPromises()
 
-    expect(w.text()).toContain('Speichern fehlgeschlagen')
+    expect(weightsForm(w).text()).toContain('Speichern fehlgeschlagen')
     expect(
       (w.find('input[name=weight-song-snippet][value=RARE]').element as HTMLInputElement).checked,
     ).toBe(true)
