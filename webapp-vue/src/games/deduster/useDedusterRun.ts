@@ -7,26 +7,7 @@
  */
 import { getCurrentScope, onScopeDispose, readonly, ref } from 'vue'
 import type { DedusterEnd } from './types'
-
-export interface RunClock {
-  now(): number
-  /** Runs [fn] after [delayMs]; the returned function cancels it. */
-  schedule(fn: () => void, delayMs: number): () => void
-  /** Runs [fn] once the change just made has reached the screen. */
-  afterPaint(fn: () => void): void
-}
-
-export const browserClock: RunClock = {
-  now: () => performance.now(),
-  // The globals, not `window.`: they are what fake timers replace in the board's tests.
-  schedule(fn, delayMs) {
-    const id = setTimeout(fn, delayMs)
-    return () => clearTimeout(id)
-  },
-  afterPaint(fn) {
-    requestAnimationFrame(() => fn())
-  },
-}
+import { browserClock, type RunClock } from '@/games/runClock'
 
 export interface RunResult {
   reactionsMs: number[]

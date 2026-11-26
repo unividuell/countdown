@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { useDedusterRun, type RunClock, type RunResult } from '../useDedusterRun'
+import type { RunClock } from '@/games/runClock'
+import { useDedusterRun, type RunResult } from '../useDedusterRun'
 
 function fakeClock(paintDelayMs = 0) {
   let now = 0

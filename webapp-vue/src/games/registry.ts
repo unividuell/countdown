@@ -10,6 +10,7 @@ import PaintRatioGame from './paintratio/PaintRatioGame.vue'
 import PlacePatchGame from './placepatch/PlacePatchGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 import SpotObjectGame from './spotobject/SpotObjectGame.vue'
+import StackFloorGame from './stackfloor/StackFloorGame.vue'
 import TurnPipesGame from './turnpipes/TurnPipesGame.vue'
 
 const NOTE = 'text-sm text-on-surface-variant'
@@ -55,4 +56,5 @@ export const gameComponents: Record<string, Component> = {
   'turn-pipes': TurnPipesGame,
   'match-scale': MatchScaleGame,
   'mix-color': MixColorGame,
+  'stack-floor': StackFloorGame,
 }

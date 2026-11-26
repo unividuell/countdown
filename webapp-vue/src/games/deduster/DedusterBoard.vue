@@ -23,7 +23,8 @@ import { loadPhoto } from './photo'
 import { playHit } from './tileSound'
 import dustUrl from './dust.jpg'
 import type { DedusterGuessWire, DedusterPayload, DedusterScene } from './types'
-import { browserClock, useDedusterRun, type RunResult } from './useDedusterRun'
+import { browserClock } from '@/games/runClock'
+import { useDedusterRun, type RunResult } from './useDedusterRun'
 
 const RELOAD_NOTE = 'Neu geladen — dein Lauf wird markiert.'
 const RIPPLE_MS = 400

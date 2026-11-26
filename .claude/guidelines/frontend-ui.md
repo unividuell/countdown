@@ -32,7 +32,7 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **An image under a gesture must not take the touch.** A long press on an `<img>` opens the OS
   image menu and fires `pointercancel` mid-gesture. Give the image
   `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
-  `DedusterMark`, `PlacePatchBoard`.
+  `RunMark`, `PlacePatchBoard`.
 - **A text field's font is at least 16px (`text-base`).** Below that, iOS Safari zooms the page
   in on focus. Never `maximum-scale=1` instead: it also kills pinch zoom. `SongSearchBox`.
 
@@ -78,6 +78,9 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **The resting appearance is correct without the animation; the animation only covers the
   transition.** Bind the final state declaratively, then animate — the animation is skipped under
   reduced motion, in a hidden tab and wherever `Element.animate` is missing. `HoldButton`.
+- **A one-shot SMIL `<animate>` inserted after its SVG mounted never plays visibly.** Its timeline
+  started at mount, so it jumps to the end state. Use a CSS animation: it starts on insertion.
+  Hochstapler's falling cuts.
 - **An element animated in from nothing is `inert` until it arrives**, not merely invisible, or it
   is tabbable and a hold on it completes unseen. Bind `:inert="!ready || undefined"`: a plain
   `false` stays in the DOM and stays in effect.
