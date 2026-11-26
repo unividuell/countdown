@@ -11,7 +11,6 @@ import PaintRatioGame from '@/games/paintratio/PaintRatioGame.vue'
 import PaintRatioReveal from '@/games/paintratio/PaintRatioReveal.vue'
 import { STALE_AFTER_MS } from '@/games/drafts'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 
 enableAutoUnmount(afterEach)
 
@@ -365,12 +364,8 @@ describe('PaintRatioGame', () => {
     })
   })
 
-  it('is in the registry and in the lab, after Blockierung', () => {
-    const ids = labGameList.map((game) => game.id)
-
+  it('is in the registry', () => {
     expect(gameComponents['paint-ratio']).toBe(PaintRatioGame)
-    expect(labGameList).toContainEqual({ id: 'paint-ratio', title: 'Anmaßung' })
-    expect(ids.indexOf('paint-ratio')).toBe(ids.indexOf('copy-blocks') + 1)
   })
 
   describe('verdict', () => {

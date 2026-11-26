@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils'
 import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import type { GameProps } from '@/games/GameProps'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 import { draftKey } from '../draft'
 import TurnPipesBoard from '../TurnPipesBoard.vue'
 import TurnPipesGame from '../TurnPipesGame.vue'
@@ -87,9 +86,8 @@ describe('TurnPipesGame', () => {
     expect(wrapper.emitted('guess')).toEqual([[GUESS]])
   })
 
-  it('is in the registry and in the lab', () => {
+  it('is in the registry', () => {
     expect(gameComponents['turn-pipes']).toBeDefined()
-    expect(labGameList).toContainEqual({ id: 'turn-pipes', title: 'Verrohrung' })
   })
 
   describe('verdict', () => {

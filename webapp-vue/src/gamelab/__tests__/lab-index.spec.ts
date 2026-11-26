@@ -3,8 +3,15 @@ import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
 import { ApiError } from '@/api/client'
+import { listGames } from '@/api/games'
+import type { GameEntry } from '@/api/types'
 import { checkLabGate } from '@/gamelab/api'
-import { labGameList } from '@/gamelab/games'
+
+// Off in the community, listed anyway: the lab tests games, not the community's mix.
+const GAMES: GameEntry[] = [
+  { id: 'paint-ratio', displayName: 'Anmaßung', weight: 'NORMAL' },
+  { id: 'song-snippet', displayName: 'Anspielung', weight: 'OFF' },
+]
 
 const replace = vi.fn()
 const currentQuery = reactive<Record<string, string>>({})
@@ -38,6 +45,7 @@ vi.mock('@/communities/context', () => ({
 }))
 
 vi.mock('@/gamelab/api', () => ({ checkLabGate: vi.fn() }))
+vi.mock('@/api/games', () => ({ listGames: vi.fn() }))
 
 /** The list's links, without the cross-link to the other lab beside the heading. */
 const listLinks = (w: VueWrapper) =>
@@ -58,6 +66,7 @@ describe('lab index', () => {
     replace.mockReset()
     setQuery({})
     vi.mocked(checkLabGate).mockReset().mockResolvedValue(undefined)
+    vi.mocked(listGames).mockReset().mockResolvedValue(GAMES)
   })
 
   // Issue #99: the game pages were gated, the index was not.
@@ -66,16 +75,32 @@ describe('lab index', () => {
     const w = await mountIndex()
     expect(w.find('[data-test="lab-game-list"]').exists()).toBe(false)
     expect(w.get('[data-test="lab-unavailable"]').text()).toContain('Spiel-Labor nicht verfügbar')
+    expect(listGames).not.toHaveBeenCalled()
   })
 
-  it('lists every registered game', async () => {
+  it('lists every game the server has, off ones included', async () => {
     const w = await mountIndex()
+    expect(listGames).toHaveBeenCalledWith('team')
     const list = w.get('[data-test="lab-game-list"]')
-    for (const game of labGameList) {
-      expect(list.text()).toContain(game.title)
+    for (const game of GAMES) {
+      expect(list.text()).toContain(game.displayName)
       expect(w.find(`[data-test="lab-game-${game.id}"]`).exists()).toBe(true)
     }
-    expect(list.findAllComponents(RouterLinkStub)).toHaveLength(labGameList.length)
+    expect(list.findAllComponents(RouterLinkStub)).toHaveLength(GAMES.length)
+  })
+
+  it('says so when the server has no game', async () => {
+    vi.mocked(listGames).mockResolvedValue([])
+    const w = await mountIndex()
+    expect(w.find('[data-test="lab-game-list"]').exists()).toBe(false)
+    expect(w.find('[data-test="lab-no-games"]').exists()).toBe(true)
+  })
+
+  it('says so when the games fail to load', async () => {
+    vi.mocked(listGames).mockRejectedValue(new ApiError(500, 'boom'))
+    const w = await mountIndex()
+    expect(w.find('[data-test="lab-game-list"]').exists()).toBe(false)
+    expect(w.find('[data-test="lab-games-error"]').exists()).toBe(true)
   })
 
   it('links to the card lab beside its heading', async () => {
@@ -88,7 +113,7 @@ describe('lab index', () => {
   it('links into the community in context', async () => {
     const w = await mountIndex()
     const links = listLinks(w)
-    expect(links).toEqual(labGameList.map((g) => `/c/team/lab/${g.id}`))
+    expect(links).toEqual(GAMES.map((g) => `/c/team/lab/${g.id}`))
   })
 
   it('links without a seed, so the game page rolls a fresh round each time', async () => {
@@ -110,7 +135,7 @@ describe('lab index', () => {
     setQuery({ phase: 'TWO', ramp: '1' })
     const w = await mountIndex()
     const links = listLinks(w)
-    expect(links).toEqual(labGameList.map((g) => `/c/team/lab/${g.id}?phase=TWO&ramp=1`))
+    expect(links).toEqual(GAMES.map((g) => `/c/team/lab/${g.id}?phase=TWO&ramp=1`))
   })
 
   it('writes the chosen phase and ramp into its own URL', async () => {

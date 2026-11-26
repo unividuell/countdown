@@ -63,7 +63,6 @@ const { StubGame } = await vi.hoisted(async () => {
 vi.mock('@/ui/triangleSound', () => ({ playTriangle: vi.fn() }))
 
 vi.mock('@/gamelab/games', () => ({
-  labGameList: [{ id: 'stub', title: 'Stub' }],
   labGames: { stub: StubGame },
 }))
 
