@@ -217,8 +217,13 @@ change to a pure function. Legitimate while the input is cheap.
 - **The rule is `NotRecentlyPlayed`:** the games of the last `candidates − 4` rounds (at least one)
   are blocked, the rest drawn uniformly — over 140 rounds every game lands within 8 to 12 in about
   95 % of editions, where uniform choice gave 5 to 15. A late-arriving game does not catch up.
-  Per-community weights (#37) attach as a block length per game; see
-  `docs/superpowers/specs/2026-11-26-game-selection-cooldown-design.md`.
+  See `docs/superpowers/specs/2026-11-26-game-selection-cooldown-design.md`.
+- **Weights are relative block lengths.** A community's stage (off/rare/normal/often, #37) scales a
+  game's own block by `mean factor / factor`, so about four games stay free whatever the mix and all
+  games on one stage play as all normal. Fixed per-stage blocks made all-rare block everything and
+  repeat games back to back. Weights are an input to the rule, not a candidate filter: what `off`
+  means when nothing else is left is the rule's call. See
+  `docs/superpowers/specs/2026-11-26-game-weights-design.md`.
 - **Which game comes next is no secret.** A guessable next game costs nothing; don't trade evenness
   for unpredictability.
 - **Test a distribution over many seeds, not one.** A single lucky seed passed the old uniform rule
