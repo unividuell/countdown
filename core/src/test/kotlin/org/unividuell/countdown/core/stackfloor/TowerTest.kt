@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test
 
 class TowerTest {
 
-    private val g = TowerGeometry(fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, maxFloors = 999)
+    private val g = TowerGeometry(
+        fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, accelPercent = 3, maxFloors = 999,
+    )
 
     @Test
     fun `the foundation is centred`() {
@@ -25,6 +27,14 @@ class TowerTest {
         Tower.position(geometry = g, floor = 0, width = 660, ms = 1360) shouldBe 0
         Tower.position(geometry = g, floor = 0, width = 660, ms = 1361) shouldBe 0
         Tower.position(geometry = g, floor = 0, width = 660, ms = 1362) shouldBe 1
+    }
+
+    @Test
+    fun `each floor slides faster by accelPercent`() {
+        // 100 ms at 1/2 unit per ms: floor 0 travels 50 units, floor 10 at 130 % travels 65.
+        Tower.position(geometry = g, floor = 0, width = 660, ms = 100) shouldBe 50
+        Tower.position(geometry = g, floor = 10, width = 660, ms = 100) shouldBe 65
+        Tower.position(geometry = g.copy(accelPercent = 0), floor = 10, width = 660, ms = 100) shouldBe 50
     }
 
     @Test

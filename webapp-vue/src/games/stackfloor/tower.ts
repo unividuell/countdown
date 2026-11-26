@@ -6,12 +6,16 @@
  * first. Both assert `shared/stack-floor/tower.json`.
  */
 
-/** Lengths are integer field units; the bar slides `speedNum / speedDen` units per millisecond. */
+/**
+ * Lengths are integer field units. The bar of floor 0 slides `speedNum / speedDen` units per
+ * millisecond; each floor above adds `accelPercent` % of that.
+ */
 export interface TowerGeometry {
   fieldWidth: number
   startWidth: number
   speedNum: number
   speedDen: number
+  accelPercent: number
   maxFloors: number
 }
 
@@ -50,7 +54,9 @@ export function position(
   ms: number,
 ): number {
   const span = geometry.fieldWidth - width
-  const distance = Math.floor((ms * geometry.speedNum) / geometry.speedDen)
+  // Below 2^53 for any int ms and floor <= 999: exact in a double.
+  const percent = 100 + floor * geometry.accelPercent
+  const distance = Math.floor((ms * geometry.speedNum * percent) / (geometry.speedDen * 100))
   const m = distance % (2 * span)
   const p = m <= span ? m : 2 * span - m
 

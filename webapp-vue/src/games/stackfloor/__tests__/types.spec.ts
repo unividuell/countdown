@@ -12,6 +12,7 @@ const PAYLOAD = {
   startWidth: 660,
   speedNum: 1,
   speedDen: 2,
+  accelPercent: 3,
   pauseMs: 300,
   maxFloors: 999,
   hueStart: 350,
@@ -41,6 +42,7 @@ describe('asStackFloorPayload', () => {
       startWidth: 660,
       speedNum: 1,
       speedDen: 2,
+      accelPercent: 3,
       maxFloors: 999,
     })
   })

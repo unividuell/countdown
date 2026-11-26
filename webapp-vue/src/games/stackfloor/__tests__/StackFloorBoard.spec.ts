@@ -20,6 +20,7 @@ const PAYLOAD: StackFloorPayload = {
   ...SCENE,
   speedNum: 1,
   speedDen: 2,
+  accelPercent: 3,
   pauseMs: 300,
   maxFloors: 999,
   target: 3,

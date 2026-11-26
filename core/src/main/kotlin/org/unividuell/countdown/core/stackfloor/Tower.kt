@@ -1,11 +1,15 @@
 package org.unividuell.countdown.core.stackfloor
 
-/** Lengths are integer field units; the bar slides [speedNum]/[speedDen] units per millisecond. */
+/**
+ * Lengths are integer field units. The bar of floor 0 slides [speedNum]/[speedDen] units per
+ * millisecond; each floor above adds [accelPercent] % of that (floor 10 at 3 %: 1.3 times as fast).
+ */
 data class TowerGeometry(
     val fieldWidth: Int,
     val startWidth: Int,
     val speedNum: Int,
     val speedDen: Int,
+    val accelPercent: Int,
     val maxFloors: Int,
 )
 
@@ -37,7 +41,8 @@ object Tower {
      */
     fun position(geometry: TowerGeometry, floor: Int, width: Int, ms: Int): Int {
         val span = (geometry.fieldWidth - width).toLong()
-        val distance = ms.toLong() * geometry.speedNum / geometry.speedDen
+        val percent = 100L + floor.toLong() * geometry.accelPercent
+        val distance = ms.toLong() * geometry.speedNum * percent / (geometry.speedDen * 100L)
         val m = distance % (2 * span)
         val p = if (m <= span) m else 2 * span - m
 

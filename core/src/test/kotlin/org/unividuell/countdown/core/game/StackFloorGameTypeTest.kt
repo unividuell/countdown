@@ -50,6 +50,7 @@ class StackFloorGameTypeTest {
         maxFloors = maxFloors,
         hueStart = 0,
         target = target,
+        accelPercent = StackFloorGameType.ACCEL_PERCENT,
     )
 
     @Test
@@ -107,6 +108,7 @@ class StackFloorGameTypeTest {
         scene.propertyNames().toSet() shouldBe setOf("fieldWidth", "startWidth", "hueStart")
         payload.propertyNames().toSet() shouldBe setOf(
             "fieldWidth", "startWidth", "speedNum", "speedDen", "pauseMs", "maxFloors", "hueStart", "target",
+            "accelPercent",
         )
         outcome.propertyNames().toSet() shouldBe setOf("height", "marks")
         game.solution(params).shouldBeNull()

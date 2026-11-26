@@ -23,6 +23,7 @@ export interface StackFloorPayload {
   hueStart: number
   /** The floor that earns the point in phase one; `null` in phase two. */
   target: number | null
+  accelPercent: number
 }
 
 export interface StackFloorOutcome {
@@ -67,13 +68,24 @@ export function asStackFloorScene(value: unknown): StackFloorScene | null {
 export function asStackFloorPayload(value: unknown): StackFloorPayload | null {
   if (typeof value !== 'object' || value === null) return null
   const raw = value as Partial<Record<keyof StackFloorPayload, unknown>>
-  const { fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target } = raw
+  const { fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target, accelPercent } =
+    raw
   if (!isLength(fieldWidth) || !isLength(startWidth)) return null
   if (!isLength(speedNum) || !isLength(speedDen)) return null
   if (!isCount(pauseMs) || !isLength(maxFloors) || !isCount(hueStart)) return null
-  if (!(target === null || isCount(target))) return null
+  if (!(target === null || isCount(target)) || !isCount(accelPercent)) return null
 
-  return { fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target }
+  return {
+    fieldWidth,
+    startWidth,
+    speedNum,
+    speedDen,
+    pauseMs,
+    maxFloors,
+    hueStart,
+    target,
+    accelPercent,
+  }
 }
 
 export function asStackFloorOutcome(value: unknown): StackFloorOutcome | null {
@@ -98,6 +110,7 @@ export function geometryOf(payload: StackFloorPayload): TowerGeometry {
     startWidth: payload.startWidth,
     speedNum: payload.speedNum,
     speedDen: payload.speedDen,
+    accelPercent: payload.accelPercent,
     maxFloors: payload.maxFloors,
   }
 }

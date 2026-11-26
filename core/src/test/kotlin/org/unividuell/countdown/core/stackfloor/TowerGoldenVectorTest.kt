@@ -15,7 +15,15 @@ import java.io.File
  */
 class TowerGoldenVectorTest {
 
-    data class GeometryJson(val fieldWidth: Int, val startWidth: Int, val speedNum: Int, val speedDen: Int, val maxFloors: Int)
+    data class GeometryJson(
+        val fieldWidth: Int,
+        val startWidth: Int,
+        val speedNum: Int,
+        val speedDen: Int,
+        val accelPercent: Int,
+        val maxFloors: Int,
+    )
+    private data class PlaceInput(val below: Bar, val x: Int, val width: Int)
     data class PositionCase(val floor: Int, val width: Int, val ms: Int, val x: Int)
     data class PlaceCase(val below: List<Int>, val x: Int, val width: Int, val bar: List<Int>?)
     data class TowerCase(val maxFloors: Int, val clicks: List<Int>, val height: Int, val missed: Boolean, val bars: List<List<Int>>)
@@ -27,7 +35,9 @@ class TowerGoldenVectorTest {
         val towers: List<TowerCase>,
     )
 
-    private val g = TowerGeometry(fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, maxFloors = 999)
+    private val g = TowerGeometry(
+        fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, accelPercent = 3, maxFloors = 999,
+    )
 
     private fun pair(bar: Bar) = listOf(bar.left, bar.width)
 
@@ -46,25 +56,25 @@ class TowerGoldenVectorTest {
     private fun build(): Vectors {
         val below = Bar(left = 170, width = 660)
         val placeInputs = listOf(
-            Triple(below, 0, 660), // overhang left
-            Triple(below, 340, 660), // overhang right
-            Triple(below, 170, 660), // congruent
-            Triple(below, 400, 200), // inside
-            Triple(below, 830, 100), // touches the right edge
-            Triple(below, 70, 100), // touches the left edge
-            Triple(below, 0, 50), // far left
-            Triple(below, 900, 100), // far right
+            PlaceInput(below = below, x = 0, width = 660), // overhang left
+            PlaceInput(below = below, x = 340, width = 660), // overhang right
+            PlaceInput(below = below, x = 170, width = 660), // congruent
+            PlaceInput(below = below, x = 400, width = 200), // inside
+            PlaceInput(below = below, x = 830, width = 100), // touches the right edge
+            PlaceInput(below = below, x = 70, width = 100), // touches the left edge
+            PlaceInput(below = below, x = 0, width = 50), // far left
+            PlaceInput(below = below, x = 900, width = 100), // far right
         )
         val rng = SeededRandom.fromSeed(7)
         val random = List(20) { rng.nextIntBetween(min = 0, maxInclusive = 2000) }
 
         return Vectors(
-            version = 1,
+            version = 2,
             geometry = GeometryJson(
                 fieldWidth = g.fieldWidth, startWidth = g.startWidth, speedNum = g.speedNum,
-                speedDen = g.speedDen, maxFloors = g.maxFloors,
+                speedDen = g.speedDen, accelPercent = g.accelPercent, maxFloors = g.maxFloors,
             ),
-            positions = listOf(0, 1, 7).flatMap { floor ->
+            positions = listOf(0, 1, 7, 40).flatMap { floor ->
                 listOf(660, 1, 999).flatMap { width ->
                     listOf(0, 1, 679, 680, 681, 1361, 3_600_000).map { ms ->
                         PositionCase(floor = floor, width = width, ms = ms, x = Tower.position(geometry = g, floor = floor, width = width, ms = ms))
@@ -72,7 +82,10 @@ class TowerGoldenVectorTest {
                 }
             },
             places = placeInputs.map { (b, x, width) ->
-                PlaceCase(below = pair(b), x = x, width = width, bar = Tower.place(b, x = x, width = width)?.let { pair(it) })
+                PlaceCase(
+                    below = pair(b), x = x, width = width,
+                    bar = Tower.place(below = b, x = x, width = width)?.let { pair(it) },
+                )
             },
             towers = listOf(
                 tower(geometry = g, clicks = listOf(0, 0, 0)),

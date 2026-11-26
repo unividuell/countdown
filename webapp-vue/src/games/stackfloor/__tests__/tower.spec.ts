@@ -9,15 +9,15 @@ const VECTORS_PATH = '../shared/stack-floor/tower.json'
 type Pair = [number, number]
 const vectors = JSON.parse(readFileSync(VECTORS_PATH, 'utf8')) as {
   version: number
-  geometry: Omit<TowerGeometry, 'maxFloors'> & { maxFloors: number }
+  geometry: TowerGeometry
   positions: { floor: number; width: number; ms: number; x: number }[]
   places: { below: Pair; x: number; width: number; bar: Pair | null }[]
   towers: { maxFloors: number; clicks: number[]; height: number; missed: boolean; bars: Pair[] }[]
 }
 
 describe('tower', () => {
-  it('reads version 1 vectors', () => {
-    expect(vectors.version).toBe(1)
+  it('reads version 2 vectors', () => {
+    expect(vectors.version).toBe(2)
   })
 
   it.each(vectors.positions)('puts floor $floor, width $width at $ms ms on $x', (v) => {

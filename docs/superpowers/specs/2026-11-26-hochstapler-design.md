@@ -55,7 +55,8 @@ Ein Geschicklichkeitsspiel, das sich in Sekunden erklärt.
 - Keine Wiederholung, kein Zocken (abgeben oder neu bauen) — erwogen und verworfen: zu viel Aufwand
   für den Reiz.
 - Keine Zeitwertung, auch nicht als Gleichstand-Brecher.
-- Kein Perfekt-Bonus, kein Einrasten bei knappem Treffer, keine Beschleunigung im Lauf.
+- Kein Perfekt-Bonus in Punkten, kein Einrasten bei knappem Treffer. Ein perfekter Halt bekommt nur einen
+  Erfolgston.
 - Keine Anzeige von N als Zahl.
 
 ## Ansätze
@@ -99,7 +100,9 @@ gleitet erst los, wenn der Vorhang offen ist (wie Anrührung und Augenmessung wa
 
 - **Nur N hängt an der Schwierigkeit**, gezogen aus `GameRandom.presentation` in einem Bereich, den
   `RoundContext.difficulty` verschiebt. Kein Geheimnis zu schützen, aber nicht aus dem Szenen-Strom.
-- **Geschwindigkeit und Startbreite sind konstant**, für jede Runde gleich.
+- **Startgeschwindigkeit und Startbreite sind konstant**, für jede Runde gleich. **Jedes Stockwerk gleitet
+  schneller:** um `accelPercent` % der Startgeschwindigkeit je Stockwerk (vorläufig 3 %), ganzzahlig in
+  der Turm-Funktion, eingefroren in den Params.
 - **N reicht von etwa 11 (leichteste Runde) bis etwa 45 (schwerste).** Die Geschwindigkeit wird im
   Labor so eingestellt, dass diese Grenzen passen; sie und die Startbreite sind vorläufig.
 

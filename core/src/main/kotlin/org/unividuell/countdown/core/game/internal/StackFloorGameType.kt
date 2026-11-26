@@ -27,10 +27,12 @@ data class StackFloorParams(
     val maxFloors: Int,
     val hueStart: Int,
     val target: Int?,
+    /** Default for rounds frozen before the bar sped up per floor. */
+    val accelPercent: Int = 0,
 ) {
     fun geometry() = TowerGeometry(
         fieldWidth = fieldWidth, startWidth = startWidth, speedNum = speedNum, speedDen = speedDen,
-        maxFloors = maxFloors,
+        accelPercent = accelPercent, maxFloors = maxFloors,
     )
 }
 
@@ -46,6 +48,7 @@ data class StackFloorPayload(
     val maxFloors: Int,
     val hueStart: Int,
     val target: Int?,
+    val accelPercent: Int,
 ) : GamePayload
 
 /** Why a run is marked. Stored with the outcome, so the row itself says it. */
@@ -91,6 +94,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         return StackFloorParams(
             fieldWidth = FIELD_WIDTH, startWidth = START_WIDTH, speedNum = SPEED_NUM, speedDen = SPEED_DEN,
             pauseMs = PAUSE_MS, maxFloors = MAX_FLOORS, hueStart = hueStart, target = target,
+            accelPercent = ACCEL_PERCENT,
         )
     }
 
@@ -101,6 +105,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         fieldWidth = params.fieldWidth, startWidth = params.startWidth,
         speedNum = params.speedNum, speedDen = params.speedDen, pauseMs = params.pauseMs,
         maxFloors = params.maxFloors, hueStart = params.hueStart, target = params.target,
+        accelPercent = params.accelPercent,
     )
 
     override fun requiresReveal(params: StackFloorParams) = true
@@ -172,6 +177,9 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         const val START_WIDTH = 660
         const val SPEED_NUM = 1
         const val SPEED_DEN = 2
+
+        /** Each floor's bar slides this many percent of floor 0's speed faster. Provisional. */
+        const val ACCEL_PERCENT = 3
         const val PAUSE_MS = 300
         const val MAX_FLOORS = 999
         const val MIN_TARGET = 11

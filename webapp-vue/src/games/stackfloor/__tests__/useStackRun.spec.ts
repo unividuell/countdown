@@ -8,6 +8,7 @@ const G: TowerGeometry = {
   startWidth: 660,
   speedNum: 1,
   speedDen: 2,
+  accelPercent: 3,
   maxFloors: 999,
 }
 const PAUSE = 300
