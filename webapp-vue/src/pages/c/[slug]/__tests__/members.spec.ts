@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import * as api from '@/api/communities'
+import * as gamesApi from '@/api/games'
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { slug: 'team' } }),
@@ -42,7 +43,10 @@ describe('members admin page', () => {
 })
 
 describe('settings page', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(gamesApi, 'listGames').mockResolvedValue([])
+  })
   it('shows the current invite link and can revoke it', async () => {
     vi.spyOn(api, 'getInvite').mockResolvedValue({
       url: '/join/tok',

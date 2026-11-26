@@ -3,6 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
 import { updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
+import { listGames, saveGameWeights } from '@/api/games'
+import type { GameEntry, GameWeight } from '@/api/types'
+import GameWeights from '@/communities/GameWeights.vue'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
@@ -22,6 +25,14 @@ const name = ref('')
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
+
+// What the server holds, and the form's copy of it; only what differs is sent.
+const games = ref<GameEntry[]>([])
+const savedWeights = ref<Record<string, GameWeight>>({})
+const weights = ref<Record<string, GameWeight>>({})
+const weightsChanged = computed(() =>
+  games.value.some((g) => weights.value[g.id] !== savedWeights.value[g.id]),
+)
 
 const edition = computed(() => community.value.edition)
 const start = computed(() => {
@@ -76,11 +87,30 @@ onMounted(async () => {
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
 
+onMounted(async () => {
+  const list = await listGames(slug)
+  games.value = list
+  savedWeights.value = Object.fromEntries(list.map((g) => [g.id, g.weight]))
+  weights.value = { ...savedWeights.value }
+})
+
 async function save(): Promise<void> {
   error.value = null
+  if (games.value.length && games.value.every((g) => weights.value[g.id] === 'OFF')) {
+    error.value = 'Mindestens ein Spiel muss an bleiben.'
+    return
+  }
+
   try {
-    await updateCommunity(slug, name.value.trim())
-    await refresh()
+    // Name first: on a failed weights save the renamed community is already stored and shown.
+    if (name.value.trim() !== community.value.name) {
+      await updateCommunity(slug, name.value.trim())
+      await refresh()
+    }
+    if (weightsChanged.value) {
+      await saveGameWeights(slug, weights.value)
+      savedWeights.value = { ...weights.value }
+    }
   } catch (e) {
     error.value = saveErrorMessage(e)
   }
@@ -109,6 +139,13 @@ async function revoke(): Promise<void> {
       <p class="text-xs text-on-surface-variant">
         URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
       </p>
+      <div v-if="games.length" data-test="game-weights" class="pt-3">
+        <h2 class="mb-2 font-medium">Spiele</h2>
+        <GameWeights v-model="weights" :games="games" />
+        <p class="mt-2 text-xs text-on-surface-variant">
+          Gilt ab der nächsten angekündigten Runde.
+        </p>
+      </div>
       <button class="rounded border px-3 py-1.5 hover:bg-surface-container-highest">
         Speichern
       </button>
