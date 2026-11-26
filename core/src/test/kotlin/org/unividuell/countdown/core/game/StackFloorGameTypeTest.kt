@@ -119,7 +119,10 @@ class StackFloorGameTypeTest {
             it.deviation shouldBe 0.0
             (it.outcome as StackFloorOutcome).height shouldBe 2
         }
-        game.judge(params = params(target = 3), guess = guess(twoFloors)).qualifies shouldBe false
+        game.judge(params = params(target = 3), guess = guess(twoFloors)).let {
+            it.qualifies shouldBe false
+            it.deviation shouldBe 0.0
+        }
     }
 
     @Test
@@ -166,6 +169,32 @@ class StackFloorGameTypeTest {
         marksAt(599) shouldContain StackFloorMark.SUBMITTED_BEFORE_RUN_END
         marksAt(600) shouldNotContain StackFloorMark.SUBMITTED_BEFORE_RUN_END
         marksAt(null) shouldNotContain StackFloorMark.SUBMITTED_BEFORE_RUN_END
+    }
+
+    @Test
+    fun `both marks come together, in declaration order`() {
+        val judged = game.judge(
+            params = params(target = null),
+            guess = guess("""{"clicks":[0,0,0],"restarted":true}"""),
+            context = GuessContext(sinceRevealMs = 599, playId = null),
+        )
+
+        (judged.outcome as StackFloorOutcome).marks shouldBe
+            listOf(StackFloorMark.RESTARTED, StackFloorMark.SUBMITTED_BEFORE_RUN_END)
+    }
+
+    @Test
+    fun `a single-click run has no pause in its earliest end`() {
+        fun marksAt(sinceRevealMs: Long) = (
+            game.judge(
+                params = params(target = null, maxFloors = 1),
+                guess = guess("""{"clicks":[100]}"""),
+                context = GuessContext(sinceRevealMs = sinceRevealMs, playId = null),
+            ).outcome as StackFloorOutcome
+            ).marks
+
+        marksAt(99) shouldContain StackFloorMark.SUBMITTED_BEFORE_RUN_END
+        marksAt(100) shouldNotContain StackFloorMark.SUBMITTED_BEFORE_RUN_END
     }
 
     @Test

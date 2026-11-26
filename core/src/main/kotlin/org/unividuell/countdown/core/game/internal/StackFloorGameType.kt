@@ -81,7 +81,9 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
     override fun draw(random: GameRandom, context: RoundContext): StackFloorParams {
         val hueStart = random.scene.nextInt(360)
         val target = if (context.phase == Phase.ONE) {
-            (targetBase(context.difficulty) + random.presentation.nextIntBetween(-2, 2)).coerceIn(MIN_TARGET, MAX_TARGET)
+            val jitter = random.presentation.nextIntBetween(-2, 2)
+
+            (targetBase(context.difficulty) + jitter).coerceIn(MIN_TARGET, MAX_TARGET)
         } else {
             null
         }
@@ -145,7 +147,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
 
         return Judgement(
             qualifies = target == null || tower.height >= target,
-            deviation = if (target == null) -tower.height.toDouble() else maxOf(target - tower.height, 0).toDouble(),
+            deviation = if (target == null) -tower.height.toDouble() else 0.0,
             guess = mapper.valueToTree(StackFloorGuess(clicks = clicks, restarted = restarted)),
             outcome = StackFloorOutcome(height = tower.height, marks = marks),
         )
