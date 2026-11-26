@@ -5,7 +5,6 @@
  */
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { heightLabel } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
 import StackFloorMark from './StackFloorMark.vue'
 
@@ -52,7 +51,7 @@ const COLUMNS: ScoreboardColumn<ScoreRow>[] = [{ key: 'height', label: 'Höhe', 
     </template>
 
     <template #cell-height="{ row }">{{
-      row.height === null ? '—' : heightLabel(row.height)
+      row.height === null ? '—' : String(row.height)
     }}</template>
   </RevealScoreboard>
 </template>

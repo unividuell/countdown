@@ -17,7 +17,7 @@ const props = defineProps<{
       <template #abstract>
         Tipp, um den gleitenden Balken anzuhalten. Was übersteht, fällt weg.
       </template>
-      <StackFloorRules :phase-one="props.awardRule === 'ALL_QUALIFYING'" />
+      <StackFloorRules :phase-two="props.awardRule === 'CLOSEST_ONLY'" />
     </InfoBox>
     <AwardBox
       v-if="props.awardRule !== null && props.awardPoints !== null"
