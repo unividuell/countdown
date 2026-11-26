@@ -118,6 +118,12 @@ round twice, or numbers skipped.
   `POST .../editions` creates (409 while one is active), `PUT .../editions/active` **replaces
   completely** — an absent optional field clears it, there is no "null = keep".
 - Round bounds: `gamesFromRound <= phaseTwoStartRound <= 0` (phase two optional).
+- **Archiving ends a run** (`POST .../editions/active/archive`, admin, any time): the edition row
+  stays with `final_standings` (rank, name, short name, colour, points — **no `user_id`**, so a
+  deleted account changes nothing), and every `game.round_games` row of the run is deleted; plays,
+  votes and assets go by cascade. A new table bound to a run must cascade from `round_games` or
+  `editions`, or archiving leaves it behind. Announcing locks the edition `FOR SHARE` and refuses an
+  archived one, so no round outlives its run.
 - **The edition `id` is its stable seed** — `PUT .../editions/active` keeps it. Presentational,
   public picks draw from it in the client: the closing poster is `hash32(id) % posterList.length`
   (`communities/fallbacks/poster/posters.ts`). Growing a list re-rolls only the edition that is
