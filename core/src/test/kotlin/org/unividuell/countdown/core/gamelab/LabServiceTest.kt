@@ -135,6 +135,8 @@ class LabServiceTest(
         "turn-pipes" -> mapper.readTree("""{"rotations":[${List(64) { 0 }.joinToString(",")}]}""")
         // Its guess counts the stored drops: the loop below takes one first.
         "mix-color" -> mapper.readTree("""{"drops":1}""")
+        // Start left, start right, start left: two floors, then a miss — valid at every target.
+        "stack-floor" -> mapper.readTree("""{"clicks":[0,0,0]}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
