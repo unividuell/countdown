@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * The card after the round: one tower stands on the board, the selected name's, rebuilt from its
- * click times and shown as it ended — no replay. My own is preselected; the same name again lets go
- * and the board shows the foundation alone.
+ * click times and shown as it ended — no replay. Exactly one name is always selected: mine first,
+ * without a tip of mine the table's first; tapping the selected name again keeps it.
  */
 import { computed, ref } from 'vue'
 import { provideRevealTimeline } from '@/games/revealTimeline'
@@ -24,16 +24,20 @@ const props = defineProps<{
 // The board judged the run as it ended: the reveal only lands the rows.
 provideRevealTimeline({ animate: props.animate, won: () => null, judged: 'before' })
 
-const selectedUserId = ref<string | null>(
-  props.rows.some((row) => row.userId === props.mineUserId) ? props.mineUserId : null,
+/** The name last tapped; until then, and if its row is gone, the default below stands. */
+const chosen = ref<string | null>(null)
+
+const selected = computed(
+  () =>
+    props.rows.find((row) => row.userId === chosen.value) ??
+    props.rows.find((row) => row.userId === props.mineUserId) ??
+    props.rows[0],
 )
+const selectedUserId = computed(() => selected.value?.userId ?? null)
 
-/** A name shows that tower; the same one again lets go. */
 function select(userId: string): void {
-  selectedUserId.value = selectedUserId.value === userId ? null : userId
+  chosen.value = userId
 }
-
-const selected = computed(() => props.rows.find((row) => row.userId === selectedUserId.value))
 
 /** `null`: the selected tip's click times are unreadable. */
 const bars = computed(() => {

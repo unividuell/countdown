@@ -44,9 +44,9 @@ function row(userId: string, clicks: number[] | null, over: Partial<ScoreRow> = 
   } as ScoreRow
 }
 
-function mountReveal(rows: ScoreRow[]) {
+function mountReveal(rows: ScoreRow[], mineUserId: string | null = 'me') {
   return mount(StackFloorReveal, {
-    props: { payload: PAYLOAD, rows, mineUserId: 'me', live: false, animate: false },
+    props: { payload: PAYLOAD, rows, mineUserId, live: false, animate: false },
   })
 }
 
@@ -67,6 +67,24 @@ describe('StackFloorReveal', () => {
     await wrapper.get('[data-test="select-them"]').trigger('click')
 
     expect(wrapper.findAllComponents(TowerView)).toHaveLength(1)
+    expect(wrapper.getComponent(TowerView).props('bars')).toEqual(
+      buildTower(geometryOf(PAYLOAD), THEIRS).bars,
+    )
+  })
+
+  it('the selected name tapped again stays selected', async () => {
+    const wrapper = mountReveal([row('me', MINE), row('them', THEIRS)])
+
+    await wrapper.get('[data-test="select-me"]').trigger('click')
+
+    expect(wrapper.getComponent(TowerView).props('bars')).toEqual(
+      buildTower(geometryOf(PAYLOAD), MINE).bars,
+    )
+  })
+
+  it('without a tip of mine the first name is selected', () => {
+    const wrapper = mountReveal([row('them', THEIRS), row('other', MINE)], null)
+
     expect(wrapper.getComponent(TowerView).props('bars')).toEqual(
       buildTower(geometryOf(PAYLOAD), THEIRS).bars,
     )

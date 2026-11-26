@@ -157,7 +157,8 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 ## Brett
 
 - Kartenbreit, mobil zuerst. Quer ist das Brett das Feld (jede Länge ein Anteil seiner Breite, auf
-  jedem Gerät gleich); hoch ist es fest: 300 px Brett, 22,5 px Balken, egal wie breit. Der Turm wandert nach unten weg, damit der gleitende
+  jedem Gerät gleich); hoch ist es fest: 450 px Brett, 22,5 px Balken, 24 px Luft unter dem
+  Fundament, egal wie breit. Der Turm wandert nach unten weg, damit der gleitende
   Balken sichtbar bleibt. Die Seite bleibt im Lauf scrollbar; nur ein Wisch auf dem Brett ist ein Tipp.
 - **Balken wie gefräste Holzbalken:** scharfe Ecken, oben eine schmale helle Fase, unten eine dunkle.
 - **Jeder Balken hat eine leicht andere Farbe:** Farbton um einen festen Schritt weiter, wie auf dem
@@ -175,7 +176,8 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 
 Wie Verrohrung: Takt, Zwischenstand, antippbare Namen. Je Spieler die Höhe, in Phase zwei der Sieger
 vorn; in Phase eins steht im Kopf „Lösung ≥ N“. **Ein Name im Scoreboard zeigt dessen Turm**, nachgebaut aus den Klickzeiten im Tipp, wie die
-antippbaren Namen der anderen Spiele. Es steht immer nur ein Turm auf dem Brett. Der Turm steht ganz im Bild:
+antippbaren Namen der anderen Spiele. Es steht immer genau ein Turm auf dem Brett: meiner zuerst,
+ohne eigenen Tipp der erste der Tabelle; der gewählte Name lässt sich nicht abwählen. Der Turm steht ganz im Bild:
 das Brett zoomt heraus, statt zu scrollen.
 
 ## Labor

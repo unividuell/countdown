@@ -22,8 +22,10 @@ import { barFill, barHue } from './colors'
 import { heightLabel } from './scoreboard'
 
 /** The board's and a bar's height on screen, whatever its width. */
-const BOARD_PX = 300
+const BOARD_PX = 450
 const BAR_PX = 22.5
+/** Air under the foundation. */
+const GROUND_PX = 24
 /** Until the board is measured (and in tests): a 375 px phone, 0.375 px per field unit. */
 const FALLBACK_WIDTH_PX = 375
 const GOLD_FROM = '#F7D774'
@@ -78,7 +80,7 @@ function px(value: number): number {
 
 /** The floor's top edge, before scrolling. */
 function floorY(floor: number): number {
-  return viewHeight.value - barHeight.value * (floor + 1)
+  return viewHeight.value - px(GROUND_PX) - barHeight.value * (floor + 1)
 }
 
 const offset = computed(() => {
@@ -91,7 +93,10 @@ const offset = computed(() => {
 /** Fitted: tall enough for every bar plus two floors of air, the board's shape kept, the field centred. */
 const view = computed(() => {
   const height = props.fit
-    ? Math.max(viewHeight.value, Math.ceil(barHeight.value * (props.bars.length + 2)))
+    ? Math.max(
+        viewHeight.value,
+        Math.ceil(barHeight.value * (props.bars.length + 2) + px(GROUND_PX)),
+      )
     : viewHeight.value
   const width = Math.round((height * props.fieldWidth) / viewHeight.value)
 

@@ -153,7 +153,7 @@ describe('TowerView', () => {
     const tall = Array.from({ length: 40 }, () => ({ left: 200, width: 600 }))
     const w = mountTower({ bars: tall, slider: { floor: 40, width: 600, x: 0 } })
 
-    expect(w.get('svg').attributes('viewBox')).toBe('0 0 1000 800')
+    expect(w.get('svg').attributes('viewBox')).toBe('0 0 1000 1200')
 
     const slider = w.get('[data-test="slider"]')
     const shift = Number(
@@ -164,29 +164,29 @@ describe('TowerView', () => {
     const y = Number(slider.attributes('y')) + shift
 
     expect(y).toBeGreaterThanOrEqual(0)
-    expect(y).toBeLessThanOrEqual(800 / 3)
+    expect(y).toBeLessThanOrEqual(1200 / 3)
   })
 
   it('fitted, a tall tower zooms out until every bar is on the picture', () => {
     const tall = Array.from({ length: 40 }, () => ({ left: 200, width: 600 }))
     const w = mountTower({ bars: tall, fit: true })
 
-    // 42 floors of 60 = 2520 high, 5:4 kept → 3150 wide, the field of 1000 centred.
-    expect(w.get('svg').attributes('viewBox')).toBe(`-1075 ${800 - 2520} 3150 2520`)
+    // 42 floors of 60 and 64 of ground = 2584 high, the board's shape kept → 2153 wide, centred.
+    expect(w.get('svg').attributes('viewBox')).toBe(`-577 ${1200 - 2584} 2153 2584`)
     expect(w.get('[data-test="tower"]').attributes('style')).toContain('translateY(0px)')
   })
 
   it('fitted, a short tower keeps the board as it is', () => {
-    expect(mountTower({ fit: true }).get('svg').attributes('viewBox')).toBe('0 0 1000 800')
+    expect(mountTower({ fit: true }).get('svg').attributes('viewBox')).toBe('0 0 1000 1200')
   })
 
   it('height and bar thickness stay put in pixels when the board is wider', () => {
     board.widthPx = 750
     const w = mountTower()
 
-    // 750 px for 1000 units: 0.75 px a unit, so 300 px are 400 units and a 22.5 px bar is 30.
-    expect(w.get('svg').attributes('viewBox')).toBe('0 0 1000 400')
-    expect(w.get('svg').attributes('style')).toContain('height: 300px')
+    // 750 px for 1000 units: 0.75 px a unit, so 450 px are 600 units and a 22.5 px bar is 30.
+    expect(w.get('svg').attributes('viewBox')).toBe('0 0 1000 600')
+    expect(w.get('svg').attributes('style')).toContain('height: 450px')
     expect(bars(w)[0]!.attributes('height')).toBe('30')
     board.widthPx = 0
   })
