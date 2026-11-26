@@ -93,4 +93,17 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
         awardPoints: Int,
         announcedAt: Instant,
     ): Int
+
+    /** Archiving a run: the cascade takes every play, vote and asset of its rounds along. */
+    @Modifying
+    @Query("DELETE FROM game.round_games WHERE edition_id = :editionId")
+    fun deleteByEditionId(editionId: UUID): Int
+
+    /**
+     * `1` while [editionId] is active, `null` once archived. `FOR SHARE` waits for archiving's
+     * `FOR UPDATE` and re-reads `archived_at` after it; without it an announcement racing the archive
+     * would add a round to the archived run.
+     */
+    @Query("SELECT 1 FROM community.editions WHERE id = :editionId AND archived_at IS NULL FOR SHARE")
+    fun lockActiveEdition(editionId: UUID): Int?
 }
