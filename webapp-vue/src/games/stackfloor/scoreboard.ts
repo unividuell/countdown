@@ -2,6 +2,7 @@
  * The ranking of „Hochstapler“: which rows exist, in which order, what each cell says. Pure, like
  * Verrohrung's `scoreboard.ts`, without a clock.
  */
+import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import { withTicks } from '@/games/ranking'
 import { rowHead } from '@/games/scoreboardColumns'
@@ -19,13 +20,14 @@ export interface ScoreRow extends ScoreboardRow {
 
 export function scoreRows(input: {
   entries: readonly GameEntry[]
+  awardRule: AwardRule | null
   mineUserId: string | null
 }): ScoreRow[] {
   const rows = input.entries.map((entry) => {
     const outcome = asStackFloorOutcome(entry.outcome)
 
     return {
-      ...rowHead(entry, null),
+      ...rowHead(entry, input.awardRule),
       height: outcome?.height ?? null,
       marks: outcome?.marks ?? [],
       clicks: asStackFloorGuess(entry.guess)?.clicks ?? null,
