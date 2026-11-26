@@ -3,10 +3,12 @@ package org.unividuell.countdown.core.game
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.game.internal.GameSelection
+import org.unividuell.countdown.core.game.internal.GameWeightStore
 import org.unividuell.countdown.core.game.internal.PastRound
 import org.unividuell.countdown.core.game.internal.RoundAssetStore
 import org.unividuell.countdown.core.game.internal.RoundGame
@@ -52,12 +54,14 @@ class RoundMaterialiserDifficultyTest {
     private val store = mockk<RoundGameStore>()
     private val selection = mockk<GameSelection>()
     private val assets = mockk<RoundAssetStore>()
+    private val weights = mockk<GameWeightStore>()
 
     private val materialiser = RoundMaterialiser(
         store = store,
         catalog = GameCatalog(games = listOf(game), mapper = mapper),
         selection = selection,
         assets = assets,
+        weights = weights,
         clock = Clock.fixed(Instant.parse("2026-10-29T10:00:00Z"), ZoneOffset.UTC),
     )
 
@@ -68,6 +72,7 @@ class RoundMaterialiserDifficultyTest {
         val history = (-13 downTo -19).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
             PastRound(roundNumber = -20, gameType = "fake")
         every { store.history(edition = edition, roundNumber = -10) } returns history
+        every { weights.weightsOf(edition.communityId) } returns mapOf("fake" to GameWeight.OFTEN)
         every { selection.pick(candidates = any(), history = any(), weights = any(), random = any()) } returns "fake"
         every { store.previousParams(edition = edition, gameType = "fake") } returns emptyList()
         every {
@@ -87,5 +92,18 @@ class RoundMaterialiserDifficultyTest {
 
         game.drawContexts.single().difficulty shouldBe 0.5
         game.availableContexts.single().difficulty shouldBe 0.0
+    }
+
+    @Test
+    fun `the selection gets the community's weights`() {
+        val edition = anEdition(communityId = UUID.randomUUID(), id = UUID.randomUUID())
+        val community = mapOf("fake" to GameWeight.RARE)
+        every { store.history(edition = edition, roundNumber = -10) } returns emptyList()
+        every { weights.weightsOf(edition.communityId) } returns community
+        every { selection.pick(candidates = any(), history = any(), weights = community, random = any()) } returns null
+
+        materialiser.materialise(edition = edition, roundNumber = -10)
+
+        verify { selection.pick(candidates = listOf("fake"), history = emptyList(), weights = community, random = any()) }
     }
 }

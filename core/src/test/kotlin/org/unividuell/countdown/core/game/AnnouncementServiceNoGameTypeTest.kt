@@ -15,6 +15,7 @@ import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GameSelection
+import org.unividuell.countdown.core.game.internal.GameWeightStore
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.RoundAssetStore
 import org.unividuell.countdown.core.game.internal.RoundGameStore
@@ -58,7 +59,8 @@ class AnnouncementServiceNoGameTypeTest {
         communities = communities, memberships = memberships, engine = engine, store = store,
         catalog = catalog,
         materialiser = RoundMaterialiser(
-            store = store, catalog = catalog, selection = selection, assets = mockk<RoundAssetStore>(), clock = clock,
+            store = store, catalog = catalog, selection = selection, assets = mockk<RoundAssetStore>(),
+            weights = mockk<GameWeightStore> { every { weightsOf(any()) } returns emptyMap() }, clock = clock,
         ),
         responses = responses, clock = clock,
     )
