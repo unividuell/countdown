@@ -227,6 +227,21 @@ describe('settings — games', () => {
     expect(gamesApi.saveGameWeights).not.toHaveBeenCalled()
   })
 
+  it('says the games were not saved when only they failed', async () => {
+    vi.spyOn(gamesApi, 'saveGameWeights').mockRejectedValue(
+      new ApiError(400, 'Bad Request', { detail: 'unknown games' }),
+    )
+    const w = await mountSettings()
+    await w.find('input').setValue('Team Nord')
+    await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
+    await w.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(api.updateCommunity).toHaveBeenCalledWith('team', 'Team Nord')
+    expect(w.text()).toContain('Spiele nicht gespeichert')
+    expect(w.text()).not.toContain('Name nicht gespeichert')
+  })
+
   it('keeps the selection when saving the weights fails', async () => {
     vi.spyOn(gamesApi, 'saveGameWeights').mockRejectedValue(
       new ApiError(400, 'Bad Request', { detail: 'unknown games' }),

@@ -28,7 +28,7 @@ function choose(id: string, weight: GameWeight): void {
         <label
           v-for="stage in stages"
           :key="stage.value"
-          class="flex h-11 cursor-pointer items-center justify-center border-l text-sm first:border-l-0 hover:bg-surface-container-highest has-checked:bg-primary has-checked:text-on-primary has-focus-visible:outline-2"
+          class="flex h-11 cursor-pointer items-center justify-center border-l text-sm first:border-l-0 hover:bg-surface-container-highest has-checked:bg-primary has-checked:text-on-primary has-focus-visible:outline-2 has-focus-visible:-outline-offset-2"
         >
           <input
             type="radio"

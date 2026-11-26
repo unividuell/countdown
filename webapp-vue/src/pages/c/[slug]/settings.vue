@@ -101,18 +101,21 @@ async function save(): Promise<void> {
     return
   }
 
+  // Name first: on a failed weights save the renamed community is already stored and shown, so the
+  // message says which of the two did not make it.
+  let step = 'Name'
   try {
-    // Name first: on a failed weights save the renamed community is already stored and shown.
     if (name.value.trim() !== community.value.name) {
       await updateCommunity(slug, name.value.trim())
       await refresh()
     }
+    step = 'Spiele'
     if (weightsChanged.value) {
       await saveGameWeights(slug, weights.value)
       savedWeights.value = { ...weights.value }
     }
   } catch (e) {
-    error.value = saveErrorMessage(e)
+    error.value = `${step} nicht gespeichert. ${saveErrorMessage(e)}`
   }
 }
 async function regenerate(): Promise<void> {
