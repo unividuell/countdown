@@ -68,7 +68,7 @@ class RoundMaterialiserDifficultyTest {
         val history = (-13 downTo -19).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
             PastRound(roundNumber = -20, gameType = "fake")
         every { store.history(edition = edition, roundNumber = -10) } returns history
-        every { selection.pick(candidates = any(), history = any(), random = any()) } returns "fake"
+        every { selection.pick(candidates = any(), history = any(), weights = any(), random = any()) } returns "fake"
         every { store.previousParams(edition = edition, gameType = "fake") } returns emptyList()
         every {
             store.announce(

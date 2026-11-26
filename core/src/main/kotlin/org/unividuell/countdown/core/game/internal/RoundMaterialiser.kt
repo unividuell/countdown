@@ -51,6 +51,7 @@ class RoundMaterialiser(
         val typeId = selection.pick(
             candidates = catalog.availableIds(context),
             history = history,
+            weights = emptyMap(),
             // The chosen type is announced, so it is a published value and comes from the published
             // stream — the same rule that governs the payload.
             random = random.presentation,

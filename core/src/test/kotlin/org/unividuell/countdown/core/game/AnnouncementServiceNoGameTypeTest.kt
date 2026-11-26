@@ -43,7 +43,7 @@ class AnnouncementServiceNoGameTypeTest {
     private val engine = CountdownEngine()
     private val store = mockk<RoundGameStore>()
     private val catalog = mockk<GameCatalog>()
-    private val selection = GameSelection { _, _, _ -> null }
+    private val selection = GameSelection { _, _, _, _ -> null }
     private val clock = Clock.fixed(Instant.parse("2026-08-12T10:00:00Z"), ZoneOffset.UTC)
     // Never exercised: the NO_GAME_TYPE branch under test returns before RoundResponses touches
     // any dependency.

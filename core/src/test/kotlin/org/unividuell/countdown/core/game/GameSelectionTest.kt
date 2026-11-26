@@ -1,6 +1,9 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.doubles.shouldBeBetween
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -18,7 +21,7 @@ class GameSelectionTest {
     @Test
     fun `with an empty history it picks any candidate`() {
         val picked = selection.pick(
-            candidates = listOf("alpha", "beta"), history = emptyList(), random = random(),
+            candidates = listOf("alpha", "beta"), history = emptyList(), weights = emptyMap(), random = random(),
         )
 
         listOf("alpha", "beta") shouldContain picked
@@ -36,7 +39,7 @@ class GameSelectionTest {
             selection.pick(
                 candidates = listOf("alpha", "beta"),
                 history = history,
-                random = SeededRandom.fromSeed(it),
+                weights = emptyMap(), random = SeededRandom.fromSeed(it),
             ) shouldBe "beta"
         }
     }
@@ -46,13 +49,13 @@ class GameSelectionTest {
         val history = listOf(PastRound(roundNumber = 9, gameType = "alpha"))
 
         selection.pick(
-            candidates = listOf("alpha"), history = history, random = random(),
+            candidates = listOf("alpha"), history = history, weights = emptyMap(), random = random(),
         ) shouldBe "alpha"
     }
 
     @Test
     fun `no candidates means no game`() {
-        selection.pick(candidates = emptyList(), history = emptyList(), random = random())
+        selection.pick(candidates = emptyList(), history = emptyList(), weights = emptyMap(), random = random())
             .shouldBeNull()
     }
 
@@ -68,7 +71,7 @@ class GameSelectionTest {
             selection.pick(
                 candidates = listOf("alpha", "beta", "gamma", "delta", "epsilon"),
                 history = history,
-                random = SeededRandom.fromSeed(it),
+                weights = emptyMap(), random = SeededRandom.fromSeed(it),
             )
         }.toSet()
 
@@ -86,7 +89,7 @@ class GameSelectionTest {
             selection.pick(
                 candidates = listOf("alpha", "beta", "gamma", "delta", "epsilon", "zeta"),
                 history = history,
-                random = SeededRandom.fromSeed(it),
+                weights = emptyMap(), random = SeededRandom.fromSeed(it),
             )
         }.toSet()
 
@@ -97,8 +100,8 @@ class GameSelectionTest {
     fun `the same random stream yields the same choice`() {
         val candidates = listOf("alpha", "beta", "gamma")
 
-        val first = selection.pick(candidates = candidates, history = emptyList(), random = SeededRandom.fromSeed(99))
-        val second = selection.pick(candidates = candidates, history = emptyList(), random = SeededRandom.fromSeed(99))
+        val first = selection.pick(candidates = candidates, history = emptyList(), weights = emptyMap(), random = SeededRandom.fromSeed(99))
+        val second = selection.pick(candidates = candidates, history = emptyList(), weights = emptyMap(), random = SeededRandom.fromSeed(99))
 
         first shouldBe second
     }
@@ -110,7 +113,7 @@ class GameSelectionTest {
         val candidates = listOf("alpha", "beta", "gamma")
 
         val seen = (0 until 50).mapNotNull {
-            selection.pick(candidates = candidates, history = emptyList(), random = SeededRandom.fromSeed(it))
+            selection.pick(candidates = candidates, history = emptyList(), weights = emptyMap(), random = SeededRandom.fromSeed(it))
         }.toSet()
 
         seen shouldBe candidates.toSet()
@@ -122,8 +125,12 @@ class GameSelectionTest {
     private fun historyOf(vararg types: String) =
         types.mapIndexed { i, type -> PastRound(roundNumber = 100 - i, gameType = type) }
 
-    private fun picksOver(seeds: Int, history: List<PastRound>) = (0 until seeds).mapNotNull {
-        selection.pick(candidates = fourteen, history = history, random = SeededRandom.fromSeed(it))
+    private fun picksOver(
+        seeds: Int,
+        history: List<PastRound>,
+        weights: Map<String, GameWeight> = emptyMap(),
+    ) = (0 until seeds).mapNotNull {
+        selection.pick(candidates = fourteen, history = history, weights = weights, random = SeededRandom.fromSeed(it))
     }.toSet()
 
     @Test
@@ -165,7 +172,7 @@ class GameSelectionTest {
             val history = ArrayDeque<PastRound>()
 
             repeat(140) { round ->
-                val picked = requireNotNull(selection.pick(candidates = fourteen, history = history, random = random))
+                val picked = requireNotNull(selection.pick(candidates = fourteen, history = history, weights = emptyMap(), random = random))
                 history.addFirst(PastRound(roundNumber = round, gameType = picked))
             }
 
@@ -174,5 +181,98 @@ class GameSelectionTest {
         }
 
         inside shouldBeGreaterThanOrEqual 90
+    }
+
+    // Weights: stages are block lengths relative to the mean factor of the candidates.
+
+    private fun allOn(weight: GameWeight) = fourteen.associateWith { weight }
+
+    @Test
+    fun `all games on one stage pick exactly as all normal`() {
+        val history = historyOf(*fourteen.take(7).toTypedArray())
+
+        listOf(GameWeight.OFTEN, GameWeight.RARE).forEach { stage ->
+            (0 until 50).forEach { seed ->
+                val weighted = selection.pick(
+                    candidates = fourteen, history = history, weights = allOn(stage), random = SeededRandom.fromSeed(seed),
+                )
+                val plain = selection.pick(
+                    candidates = fourteen, history = history, weights = emptyMap(), random = SeededRandom.fromSeed(seed),
+                )
+
+                weighted shouldBe plain
+            }
+        }
+    }
+
+    @Test
+    fun `an off game is never picked`() {
+        picksOver(seeds = 200, history = emptyList(), weights = mapOf("g01" to GameWeight.OFF)) shouldNotContain "g01"
+    }
+
+    @Test
+    fun `all off falls back to every candidate`() {
+        selection.pick(
+            candidates = fourteen, history = emptyList(), weights = allOn(GameWeight.OFF), random = random(),
+        ).shouldNotBeNull()
+    }
+
+    @Test
+    fun `often shortens the block`() {
+        // 13 normal + 1 often: mean factor 16/14, so often blocks round(10 * 16/14 / 3) = 4 rounds.
+        val often = mapOf("g01" to GameWeight.OFTEN)
+
+        picksOver(seeds = 200, history = historyOf("g02", "g03", "g04", "g05", "g01"), weights = often) shouldContain "g01"
+        picksOver(seeds = 200, history = historyOf("g02", "g03", "g04", "g01"), weights = often) shouldNotContain "g01"
+    }
+
+    @Test
+    fun `rare lengthens the block`() {
+        // Mean factor (13 + 1/3) / 14: rare blocks 29 rounds, normal 10. g01 was 12 rounds ago —
+        // free if it were normal, blocked as rare. g12, 11 rounds ago, is free again.
+        val history = historyOf(*fourteen.drop(1).take(11).toTypedArray(), "g01")
+
+        picksOver(seeds = 200, history = history, weights = mapOf("g01" to GameWeight.RARE)) shouldBe
+            setOf("g12", "g13", "g14")
+    }
+
+    @Test
+    fun `with nothing free it still avoids the previous round`() {
+        // alpha rare blocks 2 rounds, beta normal 1: both blocked, beta was the round before.
+        val history = historyOf("beta", "alpha")
+
+        repeat(20) {
+            selection.pick(
+                candidates = listOf("alpha", "beta"),
+                history = history,
+                weights = mapOf("alpha" to GameWeight.RARE),
+                random = SeededRandom.fromSeed(it),
+            ) shouldBe "alpha"
+        }
+    }
+
+    @Test
+    fun `over 140 rounds often comes about twice, rare about half as often as normal`() {
+        val weights = fourteen.take(3).associateWith { GameWeight.OFTEN } +
+            fourteen.takeLast(3).associateWith { GameWeight.RARE }
+        val counts = mutableMapOf<GameWeight, Int>()
+
+        repeat(100) { seed ->
+            val random = SeededRandom.fromSeed(seed)
+            val history = ArrayDeque<PastRound>()
+
+            repeat(140) { round ->
+                val picked = requireNotNull(
+                    selection.pick(candidates = fourteen, history = history, weights = weights, random = random),
+                )
+                history.addFirst(PastRound(roundNumber = round, gameType = picked))
+            }
+
+            history.forEach { counts.merge(weights[it.gameType] ?: GameWeight.NORMAL, 1, Int::plus) }
+        }
+
+        val normal = counts.getValue(GameWeight.NORMAL) / 8.0
+        (counts.getValue(GameWeight.OFTEN) / 3.0 / normal).shouldBeBetween(1.8, 2.6, 0.0)
+        (counts.getValue(GameWeight.RARE) / 3.0 / normal).shouldBeBetween(0.3, 0.55, 0.0)
     }
 }

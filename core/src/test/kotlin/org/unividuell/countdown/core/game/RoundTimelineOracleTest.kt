@@ -151,10 +151,11 @@ class RoundTimelineOracleTest(
         /** The real rule, choosing between the two oracle games only — so they must alternate. */
         @Bean
         @Primary
-        fun oracleSelection() = GameSelection { candidates, history, random ->
+        fun oracleSelection() = GameSelection { candidates, history, weights, random ->
             NotRecentlyPlayed().pick(
                 candidates = candidates.filter { it in ORACLE_IDS },
                 history = history,
+                weights = weights,
                 random = random,
             )
         }
