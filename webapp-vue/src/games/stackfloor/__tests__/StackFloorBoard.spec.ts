@@ -210,7 +210,7 @@ describe('StackFloorBoard', () => {
     )
     expect(one.text()).toContain('Erreiche den besonderen Balken.')
     expect(two.text()).not.toContain('Ein Balken sieht anders aus')
-    expect(two.text()).toContain('Der höchste Turm nimmt alles.')
+    expect(two.text()).toContain('Der höchste Turm.')
     for (const w of [one, two]) {
       expect(w.text()).toContain('Tippen hält den Balken an.')
       expect(w.text()).toContain('Du hast genau einen Versuch.')

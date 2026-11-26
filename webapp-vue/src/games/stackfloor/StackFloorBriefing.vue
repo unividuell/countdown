@@ -26,9 +26,7 @@ const props = defineProps<{
       game-id="stack-floor"
     >
       <template #qualifies>Erreiche den besonderen Balken.</template>
-      <template #closest>
-        Der höchste Turm nimmt alles. Bei gleicher Höhe bekommen alle die vollen Punkte.
-      </template>
+      <template #closest>Der höchste Turm.</template>
     </AwardBox>
   </div>
 </template>
