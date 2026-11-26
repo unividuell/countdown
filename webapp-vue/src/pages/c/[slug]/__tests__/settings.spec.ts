@@ -6,14 +6,17 @@ import * as gamesApi from '@/api/games'
 import { ApiError } from '@/api/client'
 import type { CommunityResponse, EditionResponse, GameEntry } from '@/api/types'
 
-const { community } = vi.hoisted(() => ({ community: { current: null as never } }))
+const { community, refresh } = vi.hoisted(() => ({
+  community: { current: null as never },
+  refresh: vi.fn(),
+}))
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }))
 vi.mock('@/communities/useAdminGuard', () => ({ useAdminGuard: vi.fn() }))
 vi.mock('@/communities/context', () => ({
-  useCommunityContext: () => ({ community: community.current, refresh: vi.fn() }),
+  useCommunityContext: () => ({ community: community.current, refresh }),
 }))
 
 const edition: EditionResponse = {
@@ -170,6 +173,75 @@ describe('settings — edition', () => {
     const w = await mountSettings()
 
     expect(w.get('[data-test=edition-title]').text()).toBe('Team')
+  })
+})
+
+describe('settings — end edition', () => {
+  // happy-dom has no `window.confirm`; the answer is the test's.
+  const answer = (yes: boolean) => {
+    const confirm = vi.fn(() => yes)
+    vi.stubGlobal('confirm', confirm)
+
+    return confirm
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2099-12-01T12:00:00Z'))
+    vi.spyOn(api, 'getInvite').mockResolvedValue(null)
+    vi.spyOn(api, 'archiveEdition').mockResolvedValue({} as CommunityResponse)
+    refresh.mockClear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('asks before ending and ends on yes', async () => {
+    useCommunity(edition)
+    const confirm = answer(true)
+    const w = await mountSettings()
+
+    await w.get('[data-test=archive-edition]').trigger('click')
+    await flushPromises()
+
+    expect(confirm).toHaveBeenCalledWith(
+      'Edition „Hüttenwochenende“ beenden? Alle Runden, Tipps und Spieldaten werden gelöscht. Nur die Endrangliste bleibt.',
+    )
+    expect(api.archiveEdition).toHaveBeenCalledWith('team')
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('does nothing when the confirm is declined', async () => {
+    useCommunity(edition)
+    answer(false)
+    const w = await mountSettings()
+
+    await w.get('[data-test=archive-edition]').trigger('click')
+    await flushPromises()
+
+    expect(api.archiveEdition).not.toHaveBeenCalled()
+  })
+
+  it('says so when ending fails', async () => {
+    useCommunity(edition)
+    answer(true)
+    vi.spyOn(api, 'archiveEdition').mockRejectedValue(new ApiError(500, 'Server Error', null))
+    const w = await mountSettings()
+
+    await w.get('[data-test=archive-edition]').trigger('click')
+    await flushPromises()
+
+    expect(w.text()).toContain('Beenden fehlgeschlagen.')
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('offers no end button without an edition', async () => {
+    useCommunity(null)
+    const w = await mountSettings()
+
+    expect(w.find('[data-test=archive-edition]').exists()).toBe(false)
   })
 })
 
