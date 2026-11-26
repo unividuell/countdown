@@ -84,6 +84,7 @@ class CommunityEditionRepositoryTest(
         val active = editions.save(anEdition(communityId = communityId, label = "Run 2026"))
 
         editions.lockActiveByCommunityId(communityId)?.id shouldBe active.id
+        editions.lockActiveForEditByCommunityId(communityId)?.id shouldBe active.id
     }
 
     @Test

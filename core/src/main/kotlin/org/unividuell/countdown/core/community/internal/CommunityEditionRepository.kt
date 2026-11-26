@@ -19,6 +19,13 @@ interface CommunityEditionRepository : CrudRepository<CommunityEdition, UUID> {
     @Query("SELECT * FROM community.editions WHERE community_id = :communityId AND archived_at IS NULL FOR UPDATE")
     fun lockActiveByCommunityId(communityId: UUID): CommunityEdition?
 
+    /**
+     * The active run, locked for an edit. `NO KEY UPDATE` waits for a running archive and then finds
+     * nothing, yet leaves a round announcement's `KEY SHARE` from the foreign key alone.
+     */
+    @Query("SELECT * FROM community.editions WHERE community_id = :communityId AND archived_at IS NULL FOR NO KEY UPDATE")
+    fun lockActiveForEditByCommunityId(communityId: UUID): CommunityEdition?
+
     /** For list screens: one query for every community's active edition, never one per row. */
     @Query("SELECT * FROM community.editions WHERE archived_at IS NULL")
     fun findAllActive(): List<CommunityEdition>

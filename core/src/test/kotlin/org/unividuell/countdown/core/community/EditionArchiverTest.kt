@@ -69,10 +69,10 @@ class EditionArchiverTest {
 
     @Test
     fun `archive ranks active members by points with shared ranks`() {
-        val fry = aMember("Fry", "2026-01-01T00:00:00Z")
-        val leela = aMember("Leela", "2026-01-02T00:00:00Z")
-        val bender = aMember("Bender", "2026-01-03T00:00:00Z")
-        val zoidberg = aMember("Zoidberg", "2026-01-04T00:00:00Z", status = MemberStatus.PENDING)
+        val fry = aMember(name = "Fry", joined = "2026-01-01T00:00:00Z")
+        val leela = aMember(name = "Leela", joined = "2026-01-02T00:00:00Z")
+        val bender = aMember(name = "Bender", joined = "2026-01-03T00:00:00Z")
+        val zoidberg = aMember(name = "Zoidberg", joined = "2026-01-04T00:00:00Z", status = MemberStatus.PENDING)
         every { members.findByCommunityId(communityId) } returns listOf(bender, zoidberg, leela, fry)
         every { gameData.finalPoints(edition = edition, userIds = any()) } returns
             mapOf(fry.userId to 12, leela.userId to 12, bender.userId to 5)
@@ -87,8 +87,8 @@ class EditionArchiverTest {
 
     @Test
     fun `archive keeps roster order on a tie`() {
-        val late = aMember("Late", "2026-03-01T00:00:00Z")
-        val early = aMember("Early", "2026-02-01T00:00:00Z")
+        val late = aMember(name = "Late", joined = "2026-03-01T00:00:00Z")
+        val early = aMember(name = "Early", joined = "2026-02-01T00:00:00Z")
         every { members.findByCommunityId(communityId) } returns listOf(late, early)
         every { gameData.finalPoints(edition = edition, userIds = any()) } returns
             mapOf(late.userId to 3, early.userId to 3)
@@ -98,8 +98,8 @@ class EditionArchiverTest {
 
     @Test
     fun `archive without any play lists everyone with zero`() {
-        val fry = aMember("Fry", "2026-01-01T00:00:00Z")
-        val leela = aMember("Leela", "2026-01-02T00:00:00Z")
+        val fry = aMember(name = "Fry", joined = "2026-01-01T00:00:00Z")
+        val leela = aMember(name = "Leela", joined = "2026-01-02T00:00:00Z")
         every { members.findByCommunityId(communityId) } returns listOf(fry, leela)
         every { gameData.finalPoints(edition = edition, userIds = any()) } returns emptyMap()
 

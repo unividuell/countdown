@@ -123,7 +123,8 @@ round twice, or numbers skipped.
   deleted account changes nothing), and every `game.round_games` row of the run is deleted; plays,
   votes and assets go by cascade. A new table bound to a run must cascade from `round_games` or
   `editions`, or archiving leaves it behind. Announcing locks the edition `FOR SHARE` and refuses an
-  archived one, so no round outlives its run.
+  archived one, so no round outlives its run. An edit reads the edition `FOR NO KEY UPDATE`;
+  unlocked, a save racing the archive writes `archived_at = null` back.
 - **The edition `id` is its stable seed** — `PUT .../editions/active` keeps it. Presentational,
   public picks draw from it in the client: the closing poster is `hash32(id) % posterList.length`
   (`communities/fallbacks/poster/posters.ts`). Growing a list re-rolls only the edition that is

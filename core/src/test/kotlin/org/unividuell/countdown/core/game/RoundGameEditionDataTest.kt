@@ -94,7 +94,7 @@ class RoundGameEditionDataTest(
         scored(edition = edition, roundNumber = current - 3, user = player, points = 4)
         scored(edition = edition, roundNumber = current - 2, user = player, points = 3)
         scored(edition = edition, roundNumber = current, user = player, points = 2)
-        scored(edition = edition, roundNumber = 1, user = player, points = 9)
+        scored(edition = edition, roundNumber = 1, user = player, points = 50)
 
         gameData.finalPoints(edition = edition, userIds = listOf(player)) shouldBe mapOf(player to 9)
     }
@@ -109,8 +109,8 @@ class RoundGameEditionDataTest(
 
         gameData.purge(requireNotNull(gone.id))
 
-        listOf("round_games", "round_plays", "round_assets").map { countFor(it, goneRound) } shouldBe listOf(0, 0, 0)
-        listOf("round_games", "round_plays", "round_assets").map { countFor(it, keptRound) } shouldBe listOf(1, 1, 1)
+        listOf("round_games", "round_plays", "round_assets").map { countFor(table = it, roundId = goneRound) } shouldBe listOf(0, 0, 0)
+        listOf("round_games", "round_plays", "round_assets").map { countFor(table = it, roundId = keptRound) } shouldBe listOf(1, 1, 1)
     }
 
     @Test

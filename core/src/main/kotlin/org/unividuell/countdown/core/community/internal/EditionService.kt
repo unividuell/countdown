@@ -56,7 +56,8 @@ open class EditionService(
      */
     @Transactional
     open fun replace(communityId: UUID, draft: EditionDraft): CommunityEdition {
-        val current = active(communityId) ?: throw EditionNotFoundException()
+        // Locked: read unlocked, a save racing an archive would write `archived_at = null` back.
+        val current = editions.lockActiveForEditByCommunityId(communityId) ?: throw EditionNotFoundException()
         val next = current.copy(
             label = draft.label.toLabel(),
             targetAt = draft.targetAt,
