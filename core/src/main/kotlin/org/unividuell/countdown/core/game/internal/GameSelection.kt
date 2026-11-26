@@ -21,18 +21,32 @@ fun interface GameSelection {
 }
 
 /**
- * The first and simplest rule: not the same game twice in a row.
+ * The games of the last rounds are blocked; the next one is drawn uniformly from the rest.
  *
- * It is a **preference, not an exclusion criterion** — if honouring it would leave nothing, the rule
- * drops rather than the round losing its game. Today exactly one type exists, so the rule never
- * fires against the real catalogue; that is why its test uses a fake one.
+ * With 14 candidates the last 10 rounds block, 4 stay free. Uniform choice gave each game 5 to 15
+ * rounds over an edition of 140; this gives 8 to 12. A game arriving mid-edition is unblocked,
+ * comes up soon and then runs with the others — it does not catch up. That the next game becomes
+ * guessable is fine: which game comes is no secret.
+ *
+ * At least the previous round blocks, so a catalogue of up to five falls back to "not twice in a
+ * row". A **preference, not an exclusion criterion** — if honouring it would leave nothing, the rule
+ * drops rather than the round losing its game.
  */
 @Component
-class DifferentFromPreviousRound : GameSelection {
+class NotRecentlyPlayed : GameSelection {
     override fun pick(candidates: List<String>, history: List<PastRound>, random: SeededRandom): String? {
         if (candidates.isEmpty()) return null
-        val previous = history.firstOrNull()?.gameType
-        val preferred = candidates.filterNot { it == previous }
-        return random.pick(preferred.ifEmpty { candidates })
+
+        // A type no longer available still takes its slot; more than UNBLOCKED stay free then.
+        val blockedRounds = maxOf(1, candidates.size - UNBLOCKED)
+        val blocked = history.take(blockedRounds).map { it.gameType }.toSet()
+
+        val free = candidates.filterNot { it in blocked }
+        return random.pick(free.ifEmpty { candidates })
+    }
+
+    companion object {
+        /** How many candidates the block leaves free. Fewer is more even but closer to a fixed cycle. */
+        const val UNBLOCKED = 4
     }
 }

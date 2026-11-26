@@ -211,9 +211,18 @@ for who took whose points. A log line covers the operational case.
 
 ## A rule that is meant to grow gets its whole input
 
-`GameSelection` receives the run's entire history and the candidate list, though "not twice in a
-row" needs one row: the next rule is then a change to a pure function. Legitimate while the input is
-cheap.
+`GameSelection` receives the run's entire history and the candidate list: the next rule is then a
+change to a pure function. Legitimate while the input is cheap.
+
+- **The rule is `NotRecentlyPlayed`:** the games of the last `candidates − 4` rounds (at least one)
+  are blocked, the rest drawn uniformly — 8 to 12 rounds per game over 140, where uniform choice
+  gave 5 to 15. A late-arriving game does not catch up. Per-community weights (#37) attach as a
+  block length per game; see
+  `docs/superpowers/specs/2026-11-26-game-selection-cooldown-design.md`.
+- **Which game comes next is no secret.** A guessable next game costs nothing; don't trade evenness
+  for unpredictability.
+- **Test a distribution over many seeds, not one.** A single lucky seed passed the old uniform rule
+  through "every game 8–12" (1 seed in 1000 does).
 
 A game whose content may be absent says so in `isAvailable(context)`; the selection draws among the
 available ones, and the lab answers 404 for the others.
