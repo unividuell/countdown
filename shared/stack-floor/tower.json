@@ -1,11 +1,12 @@
 {
-  "version" : 2,
+  "version" : 3,
   "geometry" : {
     "fieldWidth" : 1000,
     "startWidth" : 660,
     "speedNum" : 1,
     "speedDen" : 2,
     "accelPercent" : 3,
+    "perfectTolerance" : 3,
     "maxFloors" : 999
   },
   "positions" : [ {
@@ -433,42 +434,68 @@
     "below" : [ 170, 660 ],
     "x" : 0,
     "width" : 660,
+    "tolerance" : 0,
     "bar" : [ 170, 490 ]
   }, {
     "below" : [ 170, 660 ],
     "x" : 340,
     "width" : 660,
+    "tolerance" : 0,
     "bar" : [ 340, 490 ]
   }, {
     "below" : [ 170, 660 ],
     "x" : 170,
     "width" : 660,
+    "tolerance" : 0,
     "bar" : [ 170, 660 ]
   }, {
     "below" : [ 170, 660 ],
     "x" : 400,
     "width" : 200,
+    "tolerance" : 0,
     "bar" : [ 400, 200 ]
   }, {
     "below" : [ 170, 660 ],
     "x" : 830,
     "width" : 100,
+    "tolerance" : 0,
     "bar" : null
   }, {
     "below" : [ 170, 660 ],
     "x" : 70,
     "width" : 100,
+    "tolerance" : 0,
     "bar" : null
   }, {
     "below" : [ 170, 660 ],
     "x" : 0,
     "width" : 50,
+    "tolerance" : 0,
     "bar" : null
   }, {
     "below" : [ 170, 660 ],
     "x" : 900,
     "width" : 100,
+    "tolerance" : 0,
     "bar" : null
+  }, {
+    "below" : [ 170, 660 ],
+    "x" : 173,
+    "width" : 660,
+    "tolerance" : 3,
+    "bar" : [ 170, 660 ]
+  }, {
+    "below" : [ 170, 660 ],
+    "x" : 167,
+    "width" : 660,
+    "tolerance" : 3,
+    "bar" : [ 170, 660 ]
+  }, {
+    "below" : [ 170, 660 ],
+    "x" : 174,
+    "width" : 660,
+    "tolerance" : 3,
+    "bar" : [ 174, 656 ]
   } ],
   "towers" : [ {
     "maxFloors" : 999,

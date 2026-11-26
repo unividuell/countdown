@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test
 class TowerTest {
 
     private val g = TowerGeometry(
-        fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, accelPercent = 3, maxFloors = 999,
+        fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, accelPercent = 3, perfectTolerance = 3,
+        maxFloors = 999,
     )
 
     @Test
@@ -39,14 +40,23 @@ class TowerTest {
 
     @Test
     fun `the overhang is cut on either side`() {
-        Tower.place(below = Bar(left = 170, width = 660), x = 0, width = 660) shouldBe Bar(left = 170, width = 490)
-        Tower.place(below = Bar(left = 170, width = 660), x = 340, width = 660) shouldBe Bar(left = 340, width = 490)
+        Tower.place(below = Bar(left = 170, width = 660), x = 0, width = 660, tolerance = 0) shouldBe Bar(left = 170, width = 490)
+        Tower.place(below = Bar(left = 170, width = 660), x = 340, width = 660, tolerance = 0) shouldBe Bar(left = 340, width = 490)
+    }
+
+    @Test
+    fun `a stop within the tolerance snaps onto the bar below`() {
+        val below = Bar(left = 170, width = 660)
+
+        Tower.place(below = below, x = 173, width = 660, tolerance = 3) shouldBe below
+        Tower.place(below = below, x = 167, width = 660, tolerance = 3) shouldBe below
+        Tower.place(below = below, x = 174, width = 660, tolerance = 3) shouldBe Bar(left = 174, width = 656)
     }
 
     @Test
     fun `touching the edge is a miss`() {
-        Tower.place(below = Bar(left = 170, width = 660), x = 830, width = 100) shouldBe null
-        Tower.place(below = Bar(left = 170, width = 660), x = 70, width = 100) shouldBe null
+        Tower.place(below = Bar(left = 170, width = 660), x = 830, width = 100, tolerance = 0) shouldBe null
+        Tower.place(below = Bar(left = 170, width = 660), x = 70, width = 100, tolerance = 0) shouldBe null
     }
 
     @Test

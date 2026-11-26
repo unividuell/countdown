@@ -40,6 +40,8 @@ const props = defineProps<{
   slider: { floor: number; width: number; x: number } | null
   /** The special floor, gold and sparkling; `null` in phase two or while sealed. */
   target: number | null
+  /** Floors that landed perfectly: a short sparkle at their bottom corners. */
+  perfects: readonly number[]
   fit?: boolean
 }>()
 
@@ -238,6 +240,22 @@ function star(cx: number, cy: number, r: number): string {
       </g>
 
       <template v-if="!still">
+        <g v-for="floor in props.perfects" :key="`perfect-${floor}`" data-test="perfect">
+          <template v-if="props.bars[floor]">
+            <path
+              v-for="(cx, i) in [
+                props.bars[floor]!.left,
+                props.bars[floor]!.left + props.bars[floor]!.width,
+              ]"
+              :key="i"
+              class="stack-sparkle"
+              pointer-events="none"
+              :d="star(cx, floorY(floor) + BAR_HEIGHT, 16)"
+              fill="#FFFBE6"
+            />
+          </template>
+        </g>
+
         <g
           v-for="(cut, i) in props.cuts"
           :key="i"
@@ -271,6 +289,28 @@ function star(cx: number, cy: number, r: number): string {
 /* A CSS animation starts on insertion; SMIL would count from the SVG's mount and skip a late cut. */
 .stack-fall {
   animation: stack-fall 600ms ease-in forwards;
+}
+
+/* Flares up and out where the bar met its edges; fill-box, so it scales about its own centre. */
+.stack-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: stack-sparkle 500ms ease-out forwards;
+}
+
+@keyframes stack-sparkle {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.2) rotate(30deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.4) rotate(60deg);
+    opacity: 0;
+  }
 }
 
 @keyframes stack-fall {

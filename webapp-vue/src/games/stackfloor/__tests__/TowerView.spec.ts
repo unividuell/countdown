@@ -21,6 +21,7 @@ function mountTower(props: Partial<InstanceType<typeof TowerView>['$props']> = {
       hueStart: 100,
       bars: BARS,
       cuts: [],
+      perfects: [],
       slider: null,
       target: null,
       ...props,
@@ -169,6 +170,13 @@ describe('TowerView', () => {
 
     expect(w.findAll('[data-test="shade"]')).toHaveLength(bars(w).length)
     expect(w.get('[data-test="shade"]').attributes('fill')).toMatch(/^url\(#shade-/)
+  })
+
+  it('a perfect floor sparkles at both bottom corners', () => {
+    const w = mountTower({ perfects: [1] })
+    const sparkles = w.findAll('[data-test="perfect"] .stack-sparkle')
+
+    expect(sparkles).toHaveLength(2)
   })
 
   it('a short tower does not scroll', () => {

@@ -9,6 +9,7 @@ const G: TowerGeometry = {
   speedNum: 1,
   speedDen: 2,
   accelPercent: 3,
+  perfectTolerance: 3,
   maxFloors: 999,
 }
 const PAUSE = 300
@@ -59,6 +60,23 @@ describe('useStackRun', () => {
     expect(run.cuts.value).toEqual([])
   })
 
+  it('a stop within the tolerance snaps on, and perfect stops in a row count up', () => {
+    const { run, at } = setup()
+    run.start(0)
+
+    // 346 ms: x 173, three units right of the foundation's 170 — inside the tolerance of 3.
+    at(346)
+    expect(run.tap()).toBe('perfect')
+    expect(run.bars.value[1]).toEqual({ left: 170, width: 660 })
+    expect(run.streak.value).toBe(1)
+    expect(run.perfects.value).toEqual([1])
+
+    // Floor 1 starts right at x 340 and slides left: 0 ms is far off — a cut ends the streak.
+    at(346 + PAUSE)
+    expect(run.tap()).toBe('placed')
+    expect(run.streak.value).toBe(0)
+  })
+
   it('a tap places the bar from its whole-millisecond time', () => {
     const { run, at, ends } = setup()
     run.start(0)
@@ -67,7 +85,7 @@ describe('useStackRun', () => {
     run.frame()
 
     expect(run.tap()).toBe('placed')
-    const expected = place(run.bars.value[0]!, position(G, 0, 660, 680), 660)!
+    const expected = place(run.bars.value[0]!, position(G, 0, 660, 680), 660, G.perfectTolerance)!
     expect(run.bars.value[1]).toEqual(expected)
     expect(run.cuts.value).toEqual([
       { floor: 1, left: expected.left + expected.width, width: 660 - expected.width },

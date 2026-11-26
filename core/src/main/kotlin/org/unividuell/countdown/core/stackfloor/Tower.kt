@@ -1,8 +1,11 @@
 package org.unividuell.countdown.core.stackfloor
 
+import kotlin.math.abs
+
 /**
  * Lengths are integer field units. The bar of floor 0 slides [speedNum]/[speedDen] units per
  * millisecond; each floor above adds [accelPercent] % of that (floor 10 at 3 %: 1.3 times as fast).
+ * A stop at most [perfectTolerance] units off the bar below snaps onto it: perfect, nothing cut.
  */
 data class TowerGeometry(
     val fieldWidth: Int,
@@ -10,6 +13,7 @@ data class TowerGeometry(
     val speedNum: Int,
     val speedDen: Int,
     val accelPercent: Int,
+    val perfectTolerance: Int,
     val maxFloors: Int,
 )
 
@@ -49,8 +53,14 @@ object Tower {
         return (if (fromLeft(floor)) p else span - p).toInt()
     }
 
-    /** The part of the bar at [x] that rests on [below]; `null` without overlap (touching is none). */
-    fun place(below: Bar, x: Int, width: Int): Bar? {
+    /**
+     * The part of the bar at [x] that rests on [below]; `null` without overlap (touching is none).
+     * Within [tolerance] of [below]'s left edge it snaps onto [below] whole: the sliding bar is as
+     * wide as the one it lands on.
+     */
+    fun place(below: Bar, x: Int, width: Int, tolerance: Int): Bar? {
+        if (abs(x - below.left) <= tolerance) return below.copy(width = width)
+
         val left = maxOf(below.left, x)
         val right = minOf(below.left + below.width, x + width)
 
@@ -66,7 +76,7 @@ object Tower {
 
             val below = bars.last()
             val x = position(geometry = geometry, floor = bars.size - 1, width = below.width, ms = ms)
-            val bar = place(below = below, x = x, width = below.width)
+            val bar = place(below = below, x = x, width = below.width, tolerance = geometry.perfectTolerance)
                 ?: return TowerResult(bars = bars, missed = true)
 
             bars += bar

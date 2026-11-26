@@ -29,10 +29,12 @@ data class StackFloorParams(
     val target: Int?,
     /** Default for rounds frozen before the bar sped up per floor. */
     val accelPercent: Int = 0,
+    /** Default for rounds frozen before a near stop counted as perfect. */
+    val perfectTolerance: Int = 0,
 ) {
     fun geometry() = TowerGeometry(
         fieldWidth = fieldWidth, startWidth = startWidth, speedNum = speedNum, speedDen = speedDen,
-        accelPercent = accelPercent, maxFloors = maxFloors,
+        accelPercent = accelPercent, perfectTolerance = perfectTolerance, maxFloors = maxFloors,
     )
 }
 
@@ -49,6 +51,7 @@ data class StackFloorPayload(
     val hueStart: Int,
     val target: Int?,
     val accelPercent: Int,
+    val perfectTolerance: Int,
 ) : GamePayload
 
 /** Why a run is marked. Stored with the outcome, so the row itself says it. */
@@ -94,7 +97,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         return StackFloorParams(
             fieldWidth = FIELD_WIDTH, startWidth = START_WIDTH, speedNum = SPEED_NUM, speedDen = SPEED_DEN,
             pauseMs = PAUSE_MS, maxFloors = MAX_FLOORS, hueStart = hueStart, target = target,
-            accelPercent = ACCEL_PERCENT,
+            accelPercent = ACCEL_PERCENT, perfectTolerance = PERFECT_TOLERANCE,
         )
     }
 
@@ -105,7 +108,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         fieldWidth = params.fieldWidth, startWidth = params.startWidth,
         speedNum = params.speedNum, speedDen = params.speedDen, pauseMs = params.pauseMs,
         maxFloors = params.maxFloors, hueStart = params.hueStart, target = params.target,
-        accelPercent = params.accelPercent,
+        accelPercent = params.accelPercent, perfectTolerance = params.perfectTolerance,
     )
 
     override fun requiresReveal(params: StackFloorParams) = true
@@ -180,12 +183,15 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
 
         /** Each floor's bar slides this many percent of floor 0's speed faster. Provisional. */
         const val ACCEL_PERCENT = 3
+
+        /** A stop this many units off still lands perfectly: ±9 ms at the start speed. Provisional. */
+        const val PERFECT_TOLERANCE = 3
         const val PAUSE_MS = 300
         const val MAX_FLOORS = 999
-        const val MIN_TARGET = 11
-        const val MAX_TARGET = 45
+        const val MIN_TARGET = 26
+        const val MAX_TARGET = 60
 
-        /** The floor to reach around: 0.0 → 11, 0.5 → 28, 1.0 → 45. */
+        /** The floor to reach around: 0.0 → 26, 0.5 → 43, 1.0 → 60. */
         fun targetBase(difficulty: Double): Int =
             MIN_TARGET + Math.floor(difficulty * (MAX_TARGET - MIN_TARGET)).toInt()
     }

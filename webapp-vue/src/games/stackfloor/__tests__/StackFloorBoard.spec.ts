@@ -21,6 +21,7 @@ const PAYLOAD: StackFloorPayload = {
   speedNum: 1,
   speedDen: 2,
   accelPercent: 3,
+  perfectTolerance: 3,
   pauseMs: 300,
   maxFloors: 999,
   target: 3,
@@ -113,7 +114,7 @@ describe('StackFloorBoard', () => {
     vi.advanceTimersByTime(340)
     await tap(w)
 
-    expect(playPerfect).toHaveBeenCalledTimes(1)
+    expect(playPerfect).toHaveBeenCalledWith(1)
     expect(playStop).not.toHaveBeenCalled()
   })
 

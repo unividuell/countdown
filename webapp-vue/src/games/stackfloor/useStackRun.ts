@@ -35,6 +35,10 @@ export function useStackRun(input: {
   const clock = input.clock ?? browserClock
   const bars = shallowRef<Bar[]>([foundation(input.geometry)])
   const cuts = shallowRef<Cut[]>([])
+  /** The floors that landed perfectly, for their sparkle. */
+  const perfects = shallowRef<number[]>([])
+  /** Perfect stops in a row; the next cut ends it. */
+  const streak = ref(0)
   const slider = shallowRef<Slider | null>(null)
   const running = ref(false)
   const ended = ref(false)
@@ -86,11 +90,12 @@ export function useStackRun(input: {
     const floor = bars.value.length
     const rest = below()
     const x = position(input.geometry, floor - 1, rest.width, click)
-    const bar = place(rest, x, rest.width)
+    const bar = place(rest, x, rest.width, input.geometry.perfectTolerance)
     clicks.push(click)
 
     if (bar === null) {
       cuts.value = [...cuts.value, { floor, left: x, width: rest.width }]
+      streak.value = 0
       finish()
       return 'missed'
     }
@@ -105,12 +110,21 @@ export function useStackRun(input: {
     if (bars.value.length - 1 >= input.geometry.maxFloors) finish()
     else slider.value = sliderNow()
 
-    return bar.width === rest.width ? 'perfect' : 'placed'
+    if (bar.width < rest.width) {
+      streak.value = 0
+      return 'placed'
+    }
+
+    perfects.value = [...perfects.value, floor]
+    streak.value += 1
+    return 'perfect'
   }
 
   return {
     bars: readonly(bars),
     cuts: readonly(cuts),
+    perfects: readonly(perfects),
+    streak: readonly(streak),
     slider: readonly(slider),
     running: readonly(running),
     ended: readonly(ended),

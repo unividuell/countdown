@@ -55,8 +55,8 @@ Ein Geschicklichkeitsspiel, das sich in Sekunden erklärt.
 - Keine Wiederholung, kein Zocken (abgeben oder neu bauen) — erwogen und verworfen: zu viel Aufwand
   für den Reiz.
 - Keine Zeitwertung, auch nicht als Gleichstand-Brecher.
-- Kein Perfekt-Bonus in Punkten, kein Einrasten bei knappem Treffer. Ein perfekter Halt bekommt nur einen
-  Erfolgston.
+- Kein Perfekt-Bonus in Punkten. Ein perfekter Halt — höchstens `perfectTolerance` Einheiten daneben
+  (vorläufig 3), dann rastet er ein — bekommt nur Ton und Funken.
 - Keine Anzeige von N als Zahl.
 
 ## Ansätze
@@ -103,7 +103,7 @@ gleitet erst los, wenn der Vorhang offen ist (wie Anrührung und Augenmessung wa
 - **Startgeschwindigkeit und Startbreite sind konstant**, für jede Runde gleich. **Jedes Stockwerk gleitet
   schneller:** um `accelPercent` % der Startgeschwindigkeit je Stockwerk (vorläufig 3 %), ganzzahlig in
   der Turm-Funktion, eingefroren in den Params.
-- **N reicht von etwa 11 (leichteste Runde) bis etwa 45 (schwerste).** Die Geschwindigkeit wird im
+- **N reicht von etwa 26 (leichteste Runde) bis etwa 60 (schwerste).** Die Geschwindigkeit wird im
   Labor so eingestellt, dass diese Grenzen passen; sie und die Startbreite sind vorläufig.
 
 ## Die Turm-Funktion — Kotlin und TS, bit-genau
@@ -163,7 +163,9 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
   Farbkreis. Startton aus der Payload, Schrittweite und Sättigung im Labor, hell und dunkel lesbar.
 - **Der N. Balken sieht anders aus** — das Signal „Ziel erreicht“, nur in Phase eins. Man sieht ihn erst,
   wenn er gleitet; N steht nirgends als Zahl. **Gold, mit Funken, glimmend** — nicht vom Farbkreis.
-- **Halten:** kurzer Ton beim Tipp; ein perfekter Halt (nichts abgeschnitten) klingt nach Erfolg. **Schnitt:** das Stück fällt animiert nach unten
+- **Halten:** tiefer Klopfton, wenn etwas abgeschnitten wird. Ein perfekter Halt klingt hell und
+  sprüht kurz Funken an den unteren Ecken des Balkens; jeder weitere in Folge steigt eine Stufe der
+  Dur-Tonleiter, bis zur Oktave. **Schnitt:** das Stück fällt animiert nach unten
   ([frontend-ui.md](../../../.claude/guidelines/frontend-ui.md), Animation; reduzierte Bewegung
   beachten). Ton über `useSoundStage()` wie bei den anderen Brettern.
 

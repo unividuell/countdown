@@ -56,6 +56,7 @@ const bars = computed(() => {
       :hue-start="props.payload.hueStart"
       :bars="bars"
       :cuts="[]"
+      :perfects="[]"
       :slider="null"
       :target="props.payload.target"
       fit

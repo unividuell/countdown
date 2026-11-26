@@ -24,6 +24,7 @@ export interface StackFloorPayload {
   /** The floor that earns the point in phase one; `null` in phase two. */
   target: number | null
   accelPercent: number
+  perfectTolerance: number
 }
 
 export interface StackFloorOutcome {
@@ -78,11 +79,13 @@ export function asStackFloorPayload(value: unknown): StackFloorPayload | null {
     hueStart,
     target,
     accelPercent,
+    perfectTolerance,
   } = raw
   if (!isLength(fieldWidth) || !isLength(startWidth)) return null
   if (!isLength(speedNum) || !isLength(speedDen)) return null
   if (!isCount(pauseMs) || !isLength(maxFloors) || !isCount(hueStart)) return null
   if (!(target === null || isCount(target)) || !isCount(accelPercent)) return null
+  if (!isCount(perfectTolerance)) return null
 
   return {
     fieldWidth,
@@ -94,6 +97,7 @@ export function asStackFloorPayload(value: unknown): StackFloorPayload | null {
     hueStart,
     target,
     accelPercent,
+    perfectTolerance,
   }
 }
 
@@ -120,6 +124,7 @@ export function geometryOf(payload: StackFloorPayload): TowerGeometry {
     speedNum: payload.speedNum,
     speedDen: payload.speedDen,
     accelPercent: payload.accelPercent,
+    perfectTolerance: payload.perfectTolerance,
     maxFloors: payload.maxFloors,
   }
 }

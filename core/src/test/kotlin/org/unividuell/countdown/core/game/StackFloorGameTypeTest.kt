@@ -51,6 +51,7 @@ class StackFloorGameTypeTest {
         hueStart = 0,
         target = target,
         accelPercent = StackFloorGameType.ACCEL_PERCENT,
+        perfectTolerance = StackFloorGameType.PERFECT_TOLERANCE,
     )
 
     @Test
@@ -61,14 +62,14 @@ class StackFloorGameTypeTest {
 
     @Test
     fun `the target follows the difficulty, only in phase one`() {
-        StackFloorGameType.targetBase(0.0) shouldBe 11
-        StackFloorGameType.targetBase(0.5) shouldBe 28
-        StackFloorGameType.targetBase(1.0) shouldBe 45
+        StackFloorGameType.targetBase(0.0) shouldBe 26
+        StackFloorGameType.targetBase(0.5) shouldBe 43
+        StackFloorGameType.targetBase(1.0) shouldBe 60
 
         listOf(0.0, 0.5, 1.0).forEach { difficulty ->
             val base = StackFloorGameType.targetBase(difficulty)
-            val low = maxOf(11, base - 2)
-            val high = minOf(45, base + 2)
+            val low = maxOf(26, base - 2)
+            val high = minOf(60, base + 2)
 
             (0 until 200).forEach { seed ->
                 (draw(random = random(presentation = seed), difficulty = difficulty).target!! in low..high) shouldBe true
@@ -108,7 +109,7 @@ class StackFloorGameTypeTest {
         scene.propertyNames().toSet() shouldBe setOf("fieldWidth", "startWidth", "hueStart")
         payload.propertyNames().toSet() shouldBe setOf(
             "fieldWidth", "startWidth", "speedNum", "speedDen", "pauseMs", "maxFloors", "hueStart", "target",
-            "accelPercent",
+            "accelPercent", "perfectTolerance",
         )
         outcome.propertyNames().toSet() shouldBe setOf("height", "marks")
         game.solution(params).shouldBeNull()

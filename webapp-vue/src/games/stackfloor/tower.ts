@@ -8,7 +8,8 @@
 
 /**
  * Lengths are integer field units. The bar of floor 0 slides `speedNum / speedDen` units per
- * millisecond; each floor above adds `accelPercent` % of that.
+ * millisecond; each floor above adds `accelPercent` % of that. A stop at most `perfectTolerance`
+ * units off the bar below snaps onto it.
  */
 export interface TowerGeometry {
   fieldWidth: number
@@ -16,6 +17,7 @@ export interface TowerGeometry {
   speedNum: number
   speedDen: number
   accelPercent: number
+  perfectTolerance: number
   maxFloors: number
 }
 
@@ -63,8 +65,13 @@ export function position(
   return fromLeft(floor) ? p : span - p
 }
 
-/** The part of the bar at `x` that rests on `below`; `null` without overlap (touching is none). */
-export function place(below: Bar, x: number, width: number): Bar | null {
+/**
+ * The part of the bar at `x` that rests on `below`; `null` without overlap (touching is none).
+ * Within `tolerance` of `below`'s left edge it snaps onto `below` whole.
+ */
+export function place(below: Bar, x: number, width: number, tolerance: number): Bar | null {
+  if (Math.abs(x - below.left) <= tolerance) return { left: below.left, width }
+
   const left = Math.max(below.left, x)
   const right = Math.min(below.left + below.width, x + width)
 
@@ -80,7 +87,7 @@ export function buildTower(geometry: TowerGeometry, clicks: readonly number[]): 
 
     const below = bars[bars.length - 1]!
     const x = position(geometry, bars.length - 1, below.width, ms)
-    const bar = place(below, x, below.width)
+    const bar = place(below, x, below.width, geometry.perfectTolerance)
     if (bar === null) return { bars, missed: true }
 
     bars.push(bar)

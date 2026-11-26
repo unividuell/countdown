@@ -11,13 +11,13 @@ const vectors = JSON.parse(readFileSync(VECTORS_PATH, 'utf8')) as {
   version: number
   geometry: TowerGeometry
   positions: { floor: number; width: number; ms: number; x: number }[]
-  places: { below: Pair; x: number; width: number; bar: Pair | null }[]
+  places: { below: Pair; x: number; width: number; tolerance: number; bar: Pair | null }[]
   towers: { maxFloors: number; clicks: number[]; height: number; missed: boolean; bars: Pair[] }[]
 }
 
 describe('tower', () => {
-  it('reads version 2 vectors', () => {
-    expect(vectors.version).toBe(2)
+  it('reads version 3 vectors', () => {
+    expect(vectors.version).toBe(3)
   })
 
   it.each(vectors.positions)('puts floor $floor, width $width at $ms ms on $x', (v) => {
@@ -25,7 +25,7 @@ describe('tower', () => {
   })
 
   it.each(vectors.places)('places x $x, width $width on $below', (v) => {
-    const bar = place({ left: v.below[0], width: v.below[1] }, v.x, v.width)
+    const bar = place({ left: v.below[0], width: v.below[1] }, v.x, v.width, v.tolerance)
 
     expect(bar === null ? null : [bar.left, bar.width]).toEqual(v.bar)
   })

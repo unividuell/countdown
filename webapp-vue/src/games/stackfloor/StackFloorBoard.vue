@@ -130,6 +130,7 @@ watch(
 const running = computed(() => run.value?.running.value === true)
 
 const cuts = computed(() => run.value?.cuts.value ?? [])
+const perfects = computed(() => run.value?.perfects.value ?? [])
 const slider = computed(() => run.value?.slider.value ?? null)
 
 const layout = computed(() => props.payload ?? props.scene)
@@ -150,7 +151,7 @@ function onPointerDown(event: PointerEvent): void {
   const result = current.tap()
   if (result === 'ignored' || inBackground()) return
 
-  if (result === 'perfect') playPerfect()
+  if (result === 'perfect') playPerfect(current.streak.value)
   else playStop()
 }
 </script>
@@ -173,6 +174,7 @@ function onPointerDown(event: PointerEvent): void {
           :bars="shownBars"
           :cuts="cuts"
           :slider="slider"
+          :perfects="perfects"
           :target="props.payload?.target ?? null"
         />
       </div>

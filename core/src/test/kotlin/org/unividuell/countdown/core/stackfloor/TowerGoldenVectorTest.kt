@@ -21,11 +21,12 @@ class TowerGoldenVectorTest {
         val speedNum: Int,
         val speedDen: Int,
         val accelPercent: Int,
+        val perfectTolerance: Int,
         val maxFloors: Int,
     )
-    private data class PlaceInput(val below: Bar, val x: Int, val width: Int)
+    private data class PlaceInput(val below: Bar, val x: Int, val width: Int, val tolerance: Int = 0)
     data class PositionCase(val floor: Int, val width: Int, val ms: Int, val x: Int)
-    data class PlaceCase(val below: List<Int>, val x: Int, val width: Int, val bar: List<Int>?)
+    data class PlaceCase(val below: List<Int>, val x: Int, val width: Int, val tolerance: Int, val bar: List<Int>?)
     data class TowerCase(val maxFloors: Int, val clicks: List<Int>, val height: Int, val missed: Boolean, val bars: List<List<Int>>)
     data class Vectors(
         val version: Int,
@@ -36,7 +37,8 @@ class TowerGoldenVectorTest {
     )
 
     private val g = TowerGeometry(
-        fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, accelPercent = 3, maxFloors = 999,
+        fieldWidth = 1000, startWidth = 660, speedNum = 1, speedDen = 2, accelPercent = 3, perfectTolerance = 3,
+        maxFloors = 999,
     )
 
     private fun pair(bar: Bar) = listOf(bar.left, bar.width)
@@ -64,15 +66,19 @@ class TowerGoldenVectorTest {
             PlaceInput(below = below, x = 70, width = 100), // touches the left edge
             PlaceInput(below = below, x = 0, width = 50), // far left
             PlaceInput(below = below, x = 900, width = 100), // far right
+            PlaceInput(below = below, x = 173, width = 660, tolerance = 3), // snaps from the right
+            PlaceInput(below = below, x = 167, width = 660, tolerance = 3), // snaps from the left
+            PlaceInput(below = below, x = 174, width = 660, tolerance = 3), // one past: cut
         )
         val rng = SeededRandom.fromSeed(7)
         val random = List(20) { rng.nextIntBetween(min = 0, maxInclusive = 2000) }
 
         return Vectors(
-            version = 2,
+            version = 3,
             geometry = GeometryJson(
                 fieldWidth = g.fieldWidth, startWidth = g.startWidth, speedNum = g.speedNum,
-                speedDen = g.speedDen, accelPercent = g.accelPercent, maxFloors = g.maxFloors,
+                speedDen = g.speedDen, accelPercent = g.accelPercent, perfectTolerance = g.perfectTolerance,
+                maxFloors = g.maxFloors,
             ),
             positions = listOf(0, 1, 7, 40).flatMap { floor ->
                 listOf(660, 1, 999).flatMap { width ->
@@ -81,10 +87,10 @@ class TowerGoldenVectorTest {
                     }
                 }
             },
-            places = placeInputs.map { (b, x, width) ->
+            places = placeInputs.map { (b, x, width, tolerance) ->
                 PlaceCase(
-                    below = pair(b), x = x, width = width,
-                    bar = Tower.place(below = b, x = x, width = width)?.let { pair(it) },
+                    below = pair(b), x = x, width = width, tolerance = tolerance,
+                    bar = Tower.place(below = b, x = x, width = width, tolerance = tolerance)?.let { pair(it) },
                 )
             },
             towers = listOf(
