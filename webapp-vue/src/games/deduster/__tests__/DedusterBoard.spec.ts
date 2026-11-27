@@ -195,10 +195,10 @@ describe('DedusterBoard', () => {
     await tapCell(w, 3)
     await tapCell(w, 0)
 
-    const [guess] = w.emitted('guess')![0] as [Record<string, unknown>]
+    const [guess] = w.emitted('guess')![0]!
     expect(guess.endedBy).toBe('WRONG_TILE')
     expect(guess.wrongTileIndex).toBe(0)
-    expect((guess.reactionsMs as number[]).length).toBe(1)
+    expect(guess.reactionsMs.length).toBe(1)
     expect(guess.restarted).toBe(false)
   })
 
@@ -213,7 +213,7 @@ describe('DedusterBoard', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     Object.defineProperty(document, 'hidden', { value: false, configurable: true })
 
-    const [guess] = w.emitted('guess')![0] as [Record<string, unknown>]
+    const [guess] = w.emitted('guess')![0]!
     expect(guess.endedBy).toBe('TOO_LATE')
   })
 
@@ -227,7 +227,7 @@ describe('DedusterBoard', () => {
     vi.advanceTimersByTime(3000)
 
     expect(w.emitted('reveal')).toBeUndefined()
-    const [guess] = w.emitted('guess')![0] as [Record<string, unknown>]
+    const [guess] = w.emitted('guess')![0]!
     expect(guess.restarted).toBe(true)
   })
 

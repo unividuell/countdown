@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.1</version>
+		<version>4.2.0</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.unividuell.countdown</groupId>
@@ -28,14 +28,14 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<kotlin.version>2.4.10</kotlin.version>
+		<kotlin.version>2.4.21</kotlin.version>
 		<!-- Not in the Boot BOM, so ours to track (see .claude/guidelines/dependency-updates.md). -->
-		<kotlin-logging.version>8.0.4</kotlin-logging.version>
+		<kotlin-logging.version>8.0.7</kotlin-logging.version>
 		<!-- Ours, from core/maven-repo: not on Maven Central (see dependency-updates.md). -->
 		<unividuell-auth.version>0.4.0</unividuell-auth.version>
-		<spring-modulith.version>2.1.1</spring-modulith.version>
-		<metadata-extractor.version>2.19.0</metadata-extractor.version>
-		<twelvemonkeys.version>3.12.0</twelvemonkeys.version>
+		<spring-modulith.version>2.2.0</spring-modulith.version>
+		<metadata-extractor.version>2.22.0</metadata-extractor.version>
+		<twelvemonkeys.version>3.15.3</twelvemonkeys.version>
 		<!-- Image tag for spring-boot:build-image. Override in CI: -Dcountdown.image.tag=staging
 		     (the -Dspring-boot.build-image.imageName user property does NOT override a pom-set
 		     <image><name>, so parametrize the name here instead). -->
@@ -66,7 +66,7 @@
 		<dependency>
 			<groupId>net.ttddyy.observation</groupId>
 			<artifactId>datasource-micrometer-spring-boot</artifactId>
-			<version>2.3.0</version>
+			<version>2.3.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -259,13 +259,13 @@
 		<dependency>
 			<groupId>io.kotest</groupId>
 			<artifactId>kotest-assertions-core-jvm</artifactId>
-			<version>6.2.4</version>
+			<version>6.2.7</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>io.mockk</groupId>
 			<artifactId>mockk-jvm</artifactId>
-			<version>1.14.11</version>
+			<version>1.14.12</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

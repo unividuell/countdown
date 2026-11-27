@@ -55,6 +55,11 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
 - **No CSS and no box sizes are computed** ([frontend-ui.md](frontend-ui.md)). An inline value it
   cannot parse is dropped whole: `calc(14px + (100% - 14px) * f)` leaves no `width` — write
   `calc(a% + bpx)`.
+- **`useElementSize` (vueuse ≥ 15) answers `NaN` on mount.** It subtracts the computed padding,
+  which happy-dom leaves `''`. `src/__tests__/setup.ts` mocks it to `0 × 0` for every spec; a
+  spec that needs a size mocks it itself (`TowerView.spec.ts`).
+- **happy-dom ≥ 21 refuses iframes** unless `enableIframePageLoading` (set in
+  `vitest.config.ts`). modern-screenshot builds its style sandbox in one.
 - **A zero rect makes pointer geometry silently *pass* — stub the rect.**
   `getBoundingClientRect()` answers all zeroes, so a guard like `distance < 0.3 × radius` reads
   `0 < 0` for every input and every path looks covered.

@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '26'
       # The gate must stand on its own: on a pull_request the image steps below are
       # skipped, so `pnpm build` (which is what runs vue-tsc in the Docker build) never
       # happens. Hence an explicit `pnpm typecheck` here — otherwise type errors would
@@ -36,7 +36,7 @@ jobs:
       - name: Lint + typecheck + test (gate before image)
         working-directory: webapp-vue
         run: |
-          corepack enable
+          npm install -g "$(node -p 'require("./package.json").packageManager')"
           pnpm install --frozen-lockfile
           pnpm lint
           pnpm typecheck

@@ -317,8 +317,7 @@ function pointsLabel(points: number | null): string {
           >
             <span :class="row.provisional ? 'animate-pulse motion-reduce:animate-none' : ''">{{
               pointsLabel(row.points)
-            }}</span
-            ><span v-if="row.provisional" class="sr-only"> (vorläufig)</span>
+            }}</span><span v-if="row.provisional" class="sr-only"> (vorläufig)</span>
           </td>
         </tr>
       </tbody>
