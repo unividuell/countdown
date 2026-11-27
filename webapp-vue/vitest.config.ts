@@ -15,5 +15,9 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     env: { TZ: 'UTC' },
+    setupFiles: ['src/__tests__/setup.ts'],
+    // happy-dom ≥ 21 refuses iframes (SSRF guard); modern-screenshot's style sandbox is one,
+    // on about:blank. Specs load no untrusted HTML.
+    environmentOptions: { happyDOM: { settings: { enableIframePageLoading: true } } },
   },
 })
