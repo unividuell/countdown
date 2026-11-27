@@ -238,7 +238,8 @@ available ones, and the lab answers 404 for the others.
 two). `difficultyOf` (`Difficulty.kt`) is its one source for a real round:
 
 - **A game's first appearance in the edition is `0.0`**, however late — whoever meets a game first
-  is learning it. After that it climbs linearly with the edition's progress.
+  is learning it. After that it climbs linearly to `1.0` at `phaseTwoStartRound` (without phase
+  two: `gamesUntilRound`) — the final stretch is played at full difficulty.
 - **Not stored; only its effect is.** The game draws with it into `params`, frozen at
   materialisation, so changing the curve alters no announced round.
 - **`0.0` is the default.** `isAvailable` and the selection run before a type is chosen and see

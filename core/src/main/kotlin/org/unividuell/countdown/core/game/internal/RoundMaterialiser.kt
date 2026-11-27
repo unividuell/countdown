@@ -76,6 +76,7 @@ class RoundMaterialiser(
                         roundNumber = roundNumber,
                         gameType = typeId,
                         history = history,
+                        phaseTwoStartRound = edition.phaseTwoStartRound,
                         gamesUntilRound = edition.gamesUntilRound,
                     ),
                 ),

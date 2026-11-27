@@ -271,19 +271,19 @@ class RoundTimelineOracleTest(
     }
 
     @Test
-    fun `difficulty starts at zero for each game and then climbs with the days to one`() {
+    fun `difficulty starts at zero for each game and then climbs with the days to one at phase two`() {
         val run = aRun("Oracle Difficulty")
         walk(run)
 
         // Each game's first day is 0.0 — the 18th for one, the 19th for the other. From the 20th on:
-        // days since the first game day over the days the window spans.
-        val span = ChronoUnit.DAYS.between(FIRST_GAME_DAY, LAST_GAME_DAY).toDouble()
+        // days since the first game day over the days to phase two (the 22nd), then 1.0.
+        val span = ChronoUnit.DAYS.between(FIRST_GAME_DAY, PHASE_TWO_DAY).toDouble()
         GAME_DAYS.forEach { day ->
             val elapsed = ChronoUnit.DAYS.between(FIRST_GAME_DAY, day)
-            val expected = if (elapsed < 2) 0.0 else elapsed / span
+            val expected = if (elapsed < 2) 0.0 else minOf(1.0, elapsed / span)
             withClue("$day") { drawnDifficulty(run = run, day = day) shouldBe (expected plusOrMinus 1e-9) }
         }
-        drawnDifficulty(run = run, day = LAST_GAME_DAY) shouldBe (1.0 plusOrMinus 1e-9)
+        drawnDifficulty(run = run, day = PHASE_TWO_DAY) shouldBe (1.0 plusOrMinus 1e-9)
     }
 
     @Test
