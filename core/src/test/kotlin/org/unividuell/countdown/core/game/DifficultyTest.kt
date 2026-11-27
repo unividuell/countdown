@@ -20,17 +20,42 @@ class DifficultyTest {
             roundNumber = -12,
             gameType = "echo-locate",
             history = h(-13 downTo -30),
+            phaseTwoStartRound = null,
             gamesUntilRound = 0,
         ) shouldBe 0.0
     }
 
     @Test
-    fun `later appearances run linearly from the oldest played round to gamesUntilRound`() {
+    fun `later appearances run linearly from the oldest played round to phaseTwoStartRound`() {
+        // -30 .. -5: first game in -30, this game seen in -12, now -10 -> (-10 - -30) / 25.
+        difficultyOf(
+            roundNumber = -10,
+            gameType = "echo-locate",
+            history = h(-11 downTo -30, -12 to "echo-locate"),
+            phaseTwoStartRound = -5,
+            gamesUntilRound = 0,
+        ) shouldBe (0.8 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `it is 1 from phaseTwoStartRound on`() {
+        difficultyOf(
+            roundNumber = -5,
+            gameType = "echo-locate",
+            history = h(-6 downTo -30, -12 to "echo-locate"),
+            phaseTwoStartRound = -5,
+            gamesUntilRound = 0,
+        ) shouldBe 1.0
+    }
+
+    @Test
+    fun `without phase two it climbs to gamesUntilRound`() {
         // -30 .. 0: first game in -30, this game seen in -12, now -6 -> (-6 - -30) / 30.
         difficultyOf(
             roundNumber = -6,
             gameType = "echo-locate",
             history = h(-7 downTo -30, -12 to "echo-locate"),
+            phaseTwoStartRound = null,
             gamesUntilRound = 0,
         ) shouldBe (0.8 plusOrMinus 1e-9)
     }
@@ -41,6 +66,7 @@ class DifficultyTest {
             roundNumber = -10,
             gameType = "echo-locate",
             history = h(-11 downTo -20, -15 to "echo-locate"),
+            phaseTwoStartRound = null,
             gamesUntilRound = 0,
         ) shouldBe (0.5 plusOrMinus 1e-9)
     }
@@ -51,6 +77,7 @@ class DifficultyTest {
             roundNumber = -3,
             gameType = "echo-locate",
             history = h(-4 downTo -20, -10 to "echo-locate"),
+            phaseTwoStartRound = null,
             gamesUntilRound = -5,
         ) shouldBe 1.0
     }
@@ -62,6 +89,7 @@ class DifficultyTest {
             roundNumber = -3,
             gameType = "echo-locate",
             history = h(-4 downTo -8, -6 to "echo-locate"),
+            phaseTwoStartRound = null,
             gamesUntilRound = -9,
         ) shouldBe 1.0
     }

@@ -67,10 +67,10 @@ class RoundMaterialiserDifficultyTest {
 
     @Test
     fun `the draw sees the difficulty, the selection does not`() {
-        val edition = anEdition(communityId = UUID.randomUUID(), id = UUID.randomUUID())
-        // Oldest round -20 played "fake"; round -10 is now: (-10 - -20) / (0 - -20) = 0.5.
-        val history = (-13 downTo -19).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
-            PastRound(roundNumber = -20, gameType = "fake")
+        val edition = anEdition(communityId = UUID.randomUUID(), id = UUID.randomUUID()).copy(phaseTwoStartRound = -5)
+        // Oldest round -15 played "fake"; round -10 is now, phase two from -5: (-10 - -15) / (-5 - -15) = 0.5.
+        val history = (-11 downTo -14).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
+            PastRound(roundNumber = -15, gameType = "fake")
         every { store.history(edition = edition, roundNumber = -10) } returns history
         every { weights.weightsOf(edition.communityId) } returns mapOf("fake" to GameWeight.OFTEN)
         every { selection.pick(candidates = any(), history = any(), weights = any(), random = any()) } returns "fake"
