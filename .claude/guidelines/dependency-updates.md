@@ -7,9 +7,10 @@ take**. Re-read the holdback table before bumping anything.
 
 | Dependency | We pin | Newest exists | Why we hold back |
 |---|---|---|---|
-| `typescript` | `~6.0.x` | `7.x` | **TS 7 breaks `vue-tsc`.** TS 7 is the native Go port and its `package.json` `exports` no longer expose `./lib/tsc`, which `vue-tsc` resolves at startup → `ERR_PACKAGE_PATH_NOT_EXPORTED`, failing both `pnpm typecheck` and `pnpm build`. Revisit only when `vue-tsc`/Volar ship TS 7 support. |
-| `@types/node` | `^24.x` | `26.x` | The types major must match the **runtime** major, not the newest published. We run Node 24 (`deploy/web.Dockerfile`, `setup-node` in CI). Types ahead of the runtime type-check against APIs that don't exist at run time. |
-| `node` (image + CI) | `24` | `26` | Production tracks **Active LTS** only. When the image moves to the next LTS, bump `@types/node` in the same commit. |
+| `typescript` | `~6.0.x` | `7.x` | **TS 7 breaks `vue-tsc`.** TS 7 is the native Go port and its `package.json` `exports` no longer expose `./lib/tsc`, which `vue-tsc` resolves at startup → `ERR_PACKAGE_PATH_NOT_EXPORTED`, failing both `pnpm typecheck` and `pnpm build`. Revisit only when `vue-tsc`/Volar ship TS 7 support (not yet in 3.3.14, 2026-11-27). |
+| `@types/node` | `^26.x` | — | The types major must match the **runtime** major, not the newest published. We run Node 26 (`deploy/web.Dockerfile`, `setup-node` in CI). Types ahead of the runtime type-check against APIs that don't exist at run time. |
+| `node` (image + CI) | `26` | `27` (Current) | Production tracks **Active LTS** only. When the image moves to the next LTS, bump `@types/node` in the same commit. |
+| `postgres` image | `18` | `19` | A major is a **data** upgrade (`pg_upgrade` or dump/restore of the prod volume), not a tag edit. Its own task. |
 | `kotlin` | latest **stable** | `-Beta` builds | `versions:display-property-updates` happily suggests `2.4.20-Beta2`. Take stable only; filter pre-release tags yourself. |
 
 ## Dependabot alerts — triage before you bump
@@ -101,6 +102,10 @@ pnpm update --latest "!typescript" "!@types/node"   # honour the holdbacks above
   from `package.json` fails there and nowhere else.
 - After a **Prettier minor** bump, run `pnpm exec prettier --check src`. Minors can change
   formatting defaults and silently turn the next `pnpm format` into a repo-wide diff.
+- **pnpm itself** is pinned once, in `package.json` `packageManager`; CI and `web.Dockerfile`
+  `npm install -g` exactly that, and a local pnpm switches to it inside `webapp-vue/`. No corepack —
+  Node ≥ 25 ships none. Bump with `pnpm self-update <version>` in `webapp-vue/` (rewrites the field
+  and the lockfile's pnpm entry), then `cd ~ && pnpm self-update` for the global one.
 - A **happy-dom minor** can add a DOM API, and a capability check that was false in tests is then
   true — the spec silently changes which code path it exercises
   ([frontend-testing.md](frontend-testing.md#happy-dom-limits)).
@@ -108,7 +113,7 @@ pnpm update --latest "!typescript" "!@types/node"   # honour the holdbacks above
 ## Docker
 
 The compose files and `web.Dockerfile` intentionally use **floating major tags** —
-`postgres:18`, `caddy:2`, `node:24-trixie-slim`, `debian:trixie-slim`,
+`postgres:18`, `caddy:2`, `node:26-trixie-slim`, `debian:trixie-slim`,
 `gcr.io/distroless/static-debian13`, `dpage/pgadmin4:latest`. Patch and minor
 updates therefore arrive on `docker pull` with **no file to edit**. A dependency pass here
 means *verifying the pinned major is still the right one*, not bumping a string:
@@ -139,6 +144,6 @@ Pin to the **major** tag (`@v7`), matching the existing style. Two things to kno
 - Most "breaking changes" in these majors are a newer **Node runtime → minimum Actions Runner
   version** — a non-event on GitHub-hosted runners (`ubuntu-24.04-arm`).
 - If `setup-node`'s auto-caching ever misfires: `with: { package-manager-cache: false }`. Today it
-  finds nothing — no root `package.json`, pnpm comes from `corepack enable`.
+  finds nothing — no root `package.json`.
 - These can only be verified by **pushing** — there is no local run. Bump them in their own
   commit so a CI break is trivial to bisect and revert.

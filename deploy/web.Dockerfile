@@ -1,8 +1,9 @@
 # build the SPA
-FROM node:24-trixie-slim AS build
-RUN corepack enable
+FROM node:26-trixie-slim AS build
 WORKDIR /app
 COPY webapp-vue/package.json webapp-vue/pnpm-lock.yaml ./
+# The pnpm that package.json's `packageManager` names, e.g. `pnpm@12.23.0`.
+RUN npm install -g "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 COPY webapp-vue/ ./
 RUN pnpm build
